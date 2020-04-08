@@ -12,7 +12,6 @@ from IPython import get_ipython
 import pandas as pd
 import numpy as np
 import scipy.integrate
-import matplotlib.pyplot as plt
 
 import bokeh.io
 import bokeh.application
@@ -25,6 +24,10 @@ import holoviews as hv
 bokeh.io.output_notebook()
 hv.extension('bokeh')
 
+
+# %%
+import matplotlib.pyplot as plt
+
 # %% [markdown]
 # Let's load the data from the relevant folder. If this data doesn't exist for you, you'll need to run the `processing/raw_data_processing/daily_refresh.sh` script (which may require `pip install us`).
 
@@ -33,17 +36,17 @@ import git
 
 repo = git.Repo("./", search_parent_directories=True)
 homedir = repo.working_dir
-datadir = f"{homedir}/data/us/"
+datadir = f"{homedir}/data/international/italy/"
 
 # %% [markdown]
 # Load the Italian data by region (20 regions, but one of them is divided into 2, so we have 21 territories).
 
 # %%
-df = pd.read_csv(datadir + 'covid/nyt_us_states.csv')
+df = pd.read_csv(datadir + 'covid/dpc-covid19-ita-regioni.csv')
 
 
 # %%
-df['date_processed'] = pd.to_datetime(df['date'].values)
+df['date_processed'] = pd.to_datetime(df['Date'].values)
 df['date_processed'] = (df['date_processed'] - df['date_processed'].min()) / np.timedelta64(1, 'D')
 
 # %% [markdown]
@@ -56,37 +59,15 @@ df.head()
 # Add on the total population data, used to estimate the number of susceptible people later.
 
 # %%
-populations = pd.read_csv(datadir + 'demographics/state_populations_augmented.csv')
+populations = pd.read_csv(datadir + 'demographics/region-populations.csv')
 def get_population(region):
-    return populations[populations['state'] == region]['population'].values[0]
-
-def get_ticker(state):
-    state_to_ticker = dict([('CA','California'),('TX','Texas'),('FL','Florida'),('NY','New York'),('PA','Pennsylvania'),('IL','Illinois'),('OH','Ohio'),('GA','Georgia'),('NC','North Carolina'),
-                           ('MI','Michigan'),('NJ','New Jersey'),('VA','Virginia'),('WA','Washington'),('AZ','Arizona'),('MA','Massachusetts'),('TN','Tennessee'),('IN','Indiana'),('MO','Missouri'),
-                           ('MD','Maryland'),('WI','Wisconsin'),('CO','Colorado'),('MN','Minnesota'),('SC','South Carolina'),('AL','Alabama'),('LA','Louisiana'),('KY','Kentucky'),('OR','Oregon'),
-                           ('OK','Oklahoma'),('CT','Connecticut'),('UT','Utah'),('IA','Iowa'),('NV','Nevada'),('AR','Arkansas'),('MS','Mississippi'),('KS','Kansas'),('NM','New Mexico'),('NE','Nebraska'),
-                           ('WV','West Virginia'),('ID','Idaho'),('HI','Hawaii'),('NH','New Hampshire'),('ME','Maine'),('MT','Montana'),('RI','Rhode Island'),('DE','Delaware'),('SD','South Dakota'),
-                           ('ND','North Dakota'),('AK','Alaska'),('DC','District of Columbia'),('VT','Vermont'),('WY','Wyoming'),('PR','Puerto Rico'),('VI','Virgin Islands'),('GU','Guam'),
-                           ('NMI','Northern Mariana Islands')])
-    state_to_ticker = {v: k for k, v in state_to_ticker.items()} # I accidentally typed the dictionary backwards (:
-    return state_to_ticker[state]
+    if region == 'Emilia-Romagna':
+        region = 'Emilia Romagna'
+    return populations[populations['Region'] == region]['Population'].values[0]
 
 
 # %%
-state_to_ticker = dict([('CA','California'),('TX','Texas'),('FL','Florida'),('NY','New York'),('PA','Pennsylvania'),('IL','Illinois'),('OH','Ohio'),('GA','Georgia'),('NC','North Carolina'),
-                       ('MI','Michigan'),('NJ','New Jersey'),('VA','Virginia'),('WA','Washington'),('AZ','Arizona'),('MA','Massachusetts'),('TN','Tennessee'),('IN','Indiana'),('MO','Missouri'),
-                       ('MD','Maryland'),('WI','Wisconsin'),('CO','Colorado'),('MN','Minnesota'),('SC','South Carolina'),('AL','Alabama'),('LA','Louisiana'),('KY','Kentucky'),('OR','Oregon'),
-                       ('OK','Oklahoma'),('CT','Connecticut'),('UT','Utah'),('IA','Iowa'),('NV','Nevada'),('AR','Arkansas'),('MS','Mississippi'),('KS','Kansas'),('NM','New Mexico'),('NE','Nebraska'),
-                       ('WV','West Virginia'),('ID','Idaho'),('HI','Hawaii'),('NH','New Hampshire'),('ME','Maine'),('MT','Montana'),('RI','Rhode Island'),('DE','Delaware'),('SD','South Dakota'),
-                       ('ND','North Dakota'),('AK','Alaska'),('DC','District of Columbia'),('VT','Vermont'),('WY','Wyoming'),('PR','Puerto Rico'),('VI','Virgin Islands'),('GU','Guam'),
-                       ('NMI','Northern Mariana Islands')])
-state_to_ticker = {v: k for k, v in state_to_ticker.items()}
-state_to_ticker['Northern Mariana Islands']
-
-
-# %%
-df['state_ticker'] = df.apply(lambda row: get_ticker(row.state),axis = 1)
-df['Population'] = df.apply(lambda row: get_population(row.state_ticker), axis=1)
+df['Population'] = df.apply(lambda row: get_population(row.Region), axis=1)
 
 # %% [markdown]
 # Great! Let's also make a helper function to select data from a region, starting when the pandemic hit to be able to fit models.
@@ -94,8 +75,8 @@ df['Population'] = df.apply(lambda row: get_population(row.state_ticker), axis=1
 # %%
 # return data ever since first min_cases cases
 def select_region(df, region, min_deaths=50):
-    d = df.loc[df['state'] == region]
-    start = np.where(d['deaths'].values > min_deaths)[0][0]
+    d = df.loc[df['Region'] == region]
+    start = np.where(d['Deaths'].values > min_deaths)[0][0]
     d = d[start:]
     return d
 
@@ -128,7 +109,7 @@ def erf_model(params, data, future=0):
     return t, deaths
 
 def erf_fit(params, data):
-    Draw = data['deaths'].values
+    Draw = data['Deaths'].values
     Draw[np.where(Draw < 1)] = 1
     Ddata = Draw
     t, Draw = erf_model(params, data)
@@ -153,11 +134,11 @@ def plot_erf_with_errors_sample(df, region, extrapolate=1, boundary=None):
     boundary: train model on data until the day demarcated by boundary; if boundary is None, train on all available data
     '''
     data = select_region(df, region)
-    keys = ['deaths', 'cases']
+    keys = ['Deaths', 'TotalCurrentlyPositive']
     all_out = []
     proper = []
     for k in keys:
-        erf_params0 = [np.log10(np.max(data[k])), .1, 20]
+        erf_params0 = [np.log10(np.max(data[k])), 0.1, 30]
         y = data[k].values[:boundary]
         popt, pcov = curve_fit(erf_curve, data['date_processed'].values[:boundary], y, p0=erf_params0)
         errors = np.sqrt(np.diag(pcov))
@@ -198,11 +179,11 @@ def plot_erf_with_errors_sample(df, region, extrapolate=1, boundary=None):
     p.line(tp, proper[0], color = 'black', line_width = 1, legend_label = 'Deceased')
     p.line(tp, proper[1] , color = 'purple', line_width = 1, legend_label = 'Symptomatic infected')
 
-    # deaths
-    p.circle(t, data[keys[0]], color ='black')
+    # death
+    p.circle(t, data['Deaths'], color ='black')
 
-    # cases
-    p.circle(t, data[keys[1]], color ='purple')
+    # quarantined
+    p.circle(t, data['TotalCurrentlyPositive'], color ='purple')
     
     if boundary is not None and boundary < len(data):
         vline = Span(location=boundary, dimension='height', line_color='black', line_width=3)
@@ -215,7 +196,7 @@ def plot_erf_with_errors_sample(df, region, extrapolate=1, boundary=None):
 # And how well does this model do at prediction? We train it on days 0-16 (left of the vertical line), and we try to predict days afterwards.
 
 # %%
-plot_erf_with_errors_sample(df, 'Washington', 2, 19)
+plot_erf_with_errors_sample(df, 'Lombardia', 2, 16)
 
 # %% [markdown]
 # Hm. Let's check how it performs more systematically. Let's try adjusting how long we train and predict for.
@@ -228,30 +209,30 @@ results = []
 one_more = False
 while start + ind*step <= 28:
     boundary = start + ind*step
-    plot_erf_with_errors_sample(df, 'Washington', 2, boundary)
+    plot_erf_with_errors_sample(df, 'Lombardia', 2, boundary)
     ind += 1
 
 # %% [markdown]
 # The model seems to think that the pandemic will flatten out in the next couple days. Given the earlier plots, I doubt that is right. We can check it on another region and see what happens! What regions can we choose from? We need a region with enough data.
 
 # %%
-regions = sorted(np.unique(df['state'].values))
+regions = sorted(np.unique(df['Region'].values))
 print(regions)
-print([np.amax(df.loc[df['state'] == r]['cases'].values) for r in regions])
+print([np.amax(df.loc[df['Region'] == r]['TotalCases'].values) for r in regions])
 
 # %% [markdown]
 # The predictions look a little better for Emilia Romagna, but it appears that the error bars for anything earlier than 16-day prediction are enormous. By the time you reach 20 days, however, we only have 22 days of data, so it seems a little trivial to predict.
 
 # %%
-# start = 16
-# step = 4
-# ind = 0
-# results = []
-# one_more = False
-# while start + ind*step <= 24:
-#     boundary = start + ind*step
-#     plot_erf_with_errors_sample(df, 'Alabama', 2, boundary)
-#     ind += 1
+start = 16
+step = 4
+ind = 0
+results = []
+one_more = False
+while start + ind*step <= 24:
+    boundary = start + ind*step
+    plot_erf_with_errors_sample(df, 'Emilia Romagna', 2, boundary)
+    ind += 1
 
 # %% [markdown]
 # Time to move on to a more standard epidemiological model.
@@ -321,7 +302,7 @@ def model_qd(params, data, tmax=-1):
     r0 = initial_conditions[3]
     sa0 = initial_conditions[4]
     
-    d0 = data['deaths'].values[0]
+    d0 = data['Deaths'].values[0]
     s0 = N - np.sum(initial_conditions) - d0
 
     yz_0 = np.array([s0, e0, i0, q0, r0, d0, sa0])
@@ -339,8 +320,8 @@ def model_qd(params, data, tmax=-1):
     return s
 
 def fit_leastsq_qd(params, data):
-    Ddata = (data['deaths'].values)
-    Idata = (data['cases'].values)
+    Ddata = (data['Deaths'].values)
+    Idata = (data['TotalCurrentlyPositive'].values)
     s = model_qd(params, data)
 
     S = s[:,0]
@@ -355,14 +336,14 @@ def fit_leastsq_qd(params, data):
     return error
 
 # %% [markdown]
-# Let's check if this is reasonable with a manual fit to Washington. Anyway, we need to provide the optimization method an initial guess of the parameters, so this gives us a good chance to make a reasonable guess and speed up the optimization. Some good guesses are provided by the SEIR model here: https://gabgoh.github.io/COVID/index.html.
+# Let's check if this is reasonable with a manual fit to Lombardia. Anyway, we need to provide the optimization method an initial guess of the parameters, so this gives us a good chance to make a reasonable guess and speed up the optimization. Some good guesses are provided by the SEIR model here: https://gabgoh.github.io/COVID/index.html.
 
 # %%
 get_ipython().run_line_magic('matplotlib', 'notebook')
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 plt.figure()
-d = select_region(df, 'Washington')
+d = select_region(df, 'Lombardia')
 # parameters: beta, delta, gamma, alpha, lambda, kappa
 params = [2.0, 0.3, 0.2, 0.05, 0.2, 0.03]
 # parameters: beta, sigma, ra, shift
@@ -370,7 +351,7 @@ params = [2.0, 0.3, 0.2, 0.05, 0.2, 0.03]
 # conditions: E, I, Q, R, SA
 initial_conditions = [0.5e-3, 0.5e-3, 0.3e-3, 0.1e-4, 0.5]
 s = model_qd(params + initial_conditions, d, False)
-plt.scatter(d['date_processed'], d['deaths'])
+plt.scatter(d['date_processed'], d['Deaths'])
 plt.plot(d['date_processed'], s[:, 5])
 plt.show()
 
@@ -406,10 +387,10 @@ def plot_qd(res, p0_params, p0_initial_conditions, df, region, extrapolate=1, bo
     p.line(tp, D, color = 'black', line_width = 1, legend_label = 'Deceased')
 
     # death
-    p.circle(t, data['deaths'], color ='black')
+    p.circle(t, data['Deaths'], color ='black')
 
     # quarantined
-    p.circle(t, data['cases'], color ='purple', legend_label='Tested infected')
+    p.circle(t, data['TotalCurrentlyPositive'], color ='purple', legend_label='Tested infected')
     
     if boundary is not None:
         vline = Span(location=boundary, dimension='height', line_color='black', line_width=3)
@@ -462,6 +443,8 @@ def get_errors(res, p0):
 # To do the optimization, we should define reasonable ranges for the parameters as well.
 
 # %%
+
+
 param_ranges = [(0.5, 3.0), (0.0, 0.5), (0.0, 0.5), (0.01, 0.5), (0.0, 0.5), (0.005, 0.1)]
 initial_ranges = [(1.0e-7, 0.01), (1.0e-7, 0.01), (1.0e-7, 0.01), (1.0e-7, 0.01), (1.0e-7, 0.9)]
 guesses = params + initial_conditions
@@ -470,11 +453,11 @@ ranges = param_ranges + initial_ranges
 
 # %%
 from scipy.optimize import least_squares
-res = least_squares(fit_leastsq_qd, guesses, args=(select_region(df, 'Washington'),), bounds=np.transpose(np.array(ranges)))
+res = least_squares(fit_leastsq_qd, guesses, args=(select_region(df, 'Lombardia'),), bounds=np.transpose(np.array(ranges)))
 
 
 # %%
-plot_qd(res, params, initial_conditions, df, 'Washington', extrapolate=2, plot_infectious=True)
+plot_qd(res, params, initial_conditions, df, 'Lombardia', extrapolate=2, plot_infectious=True)
 
 # %% [markdown]
 # This is quite misleading! We don't actually know how many people are infected, so this model isn't quite what we're looking for. Instead, we only know the people who were tested as infected; they usually have symptoms. I won't bother with the error analysis for this model, but we can see how it holds up to prediction.
@@ -487,8 +470,8 @@ results = []
 one_more = False
 while start + ind*step <= 28:
     boundary = start + ind*step
-    res = least_squares(fit_leastsq_qd, guesses, args=(select_region(df, 'Washington')[:boundary],), bounds=np.transpose(np.array(ranges)))
-    plot_qd(res, params, initial_conditions, df, 'Washington', extrapolate=2, boundary=boundary, plot_infectious=True)
+    res = least_squares(fit_leastsq_qd, guesses, args=(select_region(df, 'Lombardia')[:boundary],), bounds=np.transpose(np.array(ranges)))
+    plot_qd(res, params, initial_conditions, df, 'Lombardia', extrapolate=2, boundary=boundary, plot_infectious=True)
     ind += 1
 
 # %% [markdown]
@@ -499,8 +482,10 @@ while start + ind*step <= 28:
 # The motivation for this model is to add two crucial ingredients: quarantine data and asymptomatic cases. For quarantine analysis, we find an effective population size based on what fraction of the population is moving according to https://citymapper.com/cmi/milan. (Since Milan is the capital of Lombardy, we perform the analysis for that region.) To make the quarantine more realistic, we model a "leaky" quarantine, where the susceptible population is given by the mobility from above plus some offset. To treat asymptomatic cases, we introduce states $I_A$ (asymptomatic) and $I_S$ (symptomatic) according to the following sketch and differential equations:
 # %% [markdown]
 # ![SEIIR + quarantine](images/overview.png)
-# %% [markdown]
-# Since this is prototyping the model, we manually enter the chart above (raw data is at the link above) and implement it. We also have a testing function $T(t)$ (called `tau(t)` in the code) that allows us to try out different testing strategies for asymptomatic populations. Sorry about the confusing variable names below: parameters are renamed as $\sigma\to$ `alpha`, $s\to$ `sigma`, and $d\to$ `delta`. Not shown in the equations above but included in the diagram is a fixed offset (`offset`) for the leaky quarantine model.
+
+# %%
+get_ipython().run_cell_magic('latex', '', 'Since this is prototyping the model, we manually enter the chart above (raw data is at the link above) and implement it. We also have a testing function $T(t)$ (called `tau(t)` in the code) that allows us to try out different testing strategies for asymptomatic populations. Sorry about the confusing variable names below: parameters are renamed as $\\sigma\\to$ `alpha`, $s\\to$ `sigma`, and $d\\to$ `delta`. Not shown in the equations above but included in the diagram is a fixed offset (`offset`) for the leaky quarantine model.')
+
 
 # %%
 # TODO fix data imputation
@@ -568,7 +553,7 @@ def model_z(params, data, tmax=-1):
     is0 = initial_conditions[2]
     r0 = initial_conditions[3]
     
-    d0 = data['deaths'].values[0]
+    d0 = data['Deaths'].values[0]
     s0 = N - np.sum(initial_conditions) - d0
 
     offset = data['date_processed'].min()
@@ -591,8 +576,8 @@ def model_z(params, data, tmax=-1):
     return s
 
 def fit_leastsq_z(params, data):
-    Ddata = (data['deaths'].values)
-    Idata = (data['cases'].values)
+    Ddata = (data['Deaths'].values)
+    Idata = (data['TotalCurrentlyPositive'].values)
     s = model_z(params, data)
 
     S = s[:,0]
@@ -613,13 +598,13 @@ get_ipython().run_line_magic('matplotlib', 'notebook')
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 plt.figure()
-d = select_region(df, 'Washington')
+d = select_region(df, 'Lombardia')
 # parameters: beta, alpha, sigma, ra, rs, delta, shift
 params = [1.8, 0.35, 0.1, 0.15, 0.34, 0.015, 0.5]
 # conditions: E, IA, IS, R
 initial_conditions = [4e-6, 0.0009, 0.0005, 0.0002]
 s = model_z(params + initial_conditions, d)
-plt.scatter(d['date_processed'], d['deaths'])
+plt.scatter(d['date_processed'], d['Deaths'])
 plt.plot(d['date_processed'], s[:, 5])
 plt.show()
 
@@ -671,10 +656,10 @@ def plot_with_errors_sample_z(res, p0_params, p0_initial_conditions, df, region,
     p.line(tp, I_S , color = 'purple', line_width = 1, legend_label = 'Symptomatic infected')
 
     # death
-    p.circle(t, data['deaths'], color ='black')
+    p.circle(t, data['Deaths'], color ='black')
 
     # quarantined
-    p.circle(t, data['cases'], color ='purple')
+    p.circle(t, data['TotalCurrentlyPositive'], color ='purple')
     
     if boundary is not None:
         vline = Span(location=boundary, dimension='height', line_color='black', line_width=3)
@@ -696,15 +681,15 @@ ranges = param_ranges + initial_ranges
 
 
 # %%
-start = 8
+start = 16
 step = 4
 ind = 0
 results = []
 one_more = False
 while start + ind*step <= 28:
     boundary = start + ind*step
-    res = least_squares(fit_leastsq_z, guesses, args=(select_region(df, 'Washington')[:boundary],), bounds=np.transpose(np.array(ranges)))
-    plot_with_errors_sample_z(res, params, initial_conditions, df, 'Washington', extrapolate=2, boundary=boundary, plot_infectious=True)
+    res = least_squares(fit_leastsq_z, guesses, args=(select_region(df, 'Lombardia')[:boundary],), bounds=np.transpose(np.array(ranges)))
+    plot_with_errors_sample_z(res, params, initial_conditions, df, 'Lombardia', extrapolate=2, boundary=boundary, plot_infectious=True)
     ind += 1
 
 # %% [markdown]
