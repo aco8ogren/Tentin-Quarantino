@@ -72,7 +72,6 @@ Y=np.array(Y)
 
 
 model=Sequential()
-# model.add(LSTM(200,input_shape=X.shape[1:],activation='sigmoid'))x
 model.add(LSTM(200,input_shape=(10,1),return_sequences=True,activation='sigmoid'))
 model.add(Dropout(0.2))
 model.add(LSTM(100,activation='sigmoid',return_sequences=True))

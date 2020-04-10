@@ -89,3 +89,4 @@ model.compile(loss='mean_squared_error', optimizer='adam')
 checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
 callbacks_list = [checkpoint]
 model.fit(X, Y, epochs=20000, batch_size=32, callbacks=callbacks_list)
+#%
