@@ -1,7 +1,7 @@
 *.DS_Store
 *.ipynb_checkpoints/
-.vscode/settings.json
+*.vscode
+.gitignore
 
 data/international/italy/COVID-19
-
 .vscode/

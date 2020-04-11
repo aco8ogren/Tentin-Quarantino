@@ -3,10 +3,13 @@
 # %%
 from IPython import get_ipython
 
+# %%
+from IPython import get_ipython
+
 # %% [markdown]
-# # COVID-19 Epidemiology Models
+#  # COVID-19 Epidemiology Models
 # %% [markdown]
-# First, some preliminary imports. You may need to pip install `holoviews` and `GitPython`. For `holoviews`, some extras might be needed (see https://holoviews.org/install.html).
+#  First, some preliminary imports. You may need to pip install `holoviews` and `GitPython`. For `holoviews`, some extras might be needed (see https://holoviews.org/install.html).
 
 # %%
 import pandas as pd
@@ -26,7 +29,7 @@ bokeh.io.output_notebook()
 hv.extension('bokeh')
 
 # %% [markdown]
-# Let's load the data from the relevant folder. If this data doesn't exist for you, you'll need to run the `processing/raw_data_processing/daily_refresh.sh` script (which may require `pip install us`).
+#  Let's load the data from the relevant folder. If this data doesn't exist for you, you'll need to run the `processing/raw_data_processing/daily_refresh.sh` script (which may require `pip install us`).
 
 # %%
 import git
@@ -36,24 +39,21 @@ homedir = repo.working_dir
 datadir = f"{homedir}/data/us/"
 
 # %% [markdown]
-# Load the Italian data by region (20 regions, but one of them is divided into 2, so we have 21 territories).
+#  Load the US data by state (50 states, but we also make a bunch of other countries pay taxes without getting the right to vote (Puerto Rico, Guam, etc.), so we include their data too).
+#  This results in more than 50 "regions".
 
 # %%
 df = pd.read_csv(datadir + 'covid/nyt_us_states.csv')
 
+# %% [markdown]
+# We want to count days as integers from some starting point.
 
 # %%
 df['date_processed'] = pd.to_datetime(df['date'].values)
 df['date_processed'] = (df['date_processed'] - df['date_processed'].min()) / np.timedelta64(1, 'D')
 
 # %% [markdown]
-# Just checking to make sure the data is here...
-
-# %%
-df.head()
-
-# %% [markdown]
-# Add on the total population data, used to estimate the number of susceptible people later.
+# Now we import the population for each state, and add that information correctly to the Pandas "dataframe".
 
 # %%
 populations = pd.read_csv(datadir + 'demographics/state_populations_augmented.csv')
@@ -71,25 +71,23 @@ def get_ticker(state):
     state_to_ticker = {v: k for k, v in state_to_ticker.items()} # I accidentally typed the dictionary backwards (:
     return state_to_ticker[state]
 
-
-# %%
-state_to_ticker = dict([('CA','California'),('TX','Texas'),('FL','Florida'),('NY','New York'),('PA','Pennsylvania'),('IL','Illinois'),('OH','Ohio'),('GA','Georgia'),('NC','North Carolina'),
-                       ('MI','Michigan'),('NJ','New Jersey'),('VA','Virginia'),('WA','Washington'),('AZ','Arizona'),('MA','Massachusetts'),('TN','Tennessee'),('IN','Indiana'),('MO','Missouri'),
-                       ('MD','Maryland'),('WI','Wisconsin'),('CO','Colorado'),('MN','Minnesota'),('SC','South Carolina'),('AL','Alabama'),('LA','Louisiana'),('KY','Kentucky'),('OR','Oregon'),
-                       ('OK','Oklahoma'),('CT','Connecticut'),('UT','Utah'),('IA','Iowa'),('NV','Nevada'),('AR','Arkansas'),('MS','Mississippi'),('KS','Kansas'),('NM','New Mexico'),('NE','Nebraska'),
-                       ('WV','West Virginia'),('ID','Idaho'),('HI','Hawaii'),('NH','New Hampshire'),('ME','Maine'),('MT','Montana'),('RI','Rhode Island'),('DE','Delaware'),('SD','South Dakota'),
-                       ('ND','North Dakota'),('AK','Alaska'),('DC','District of Columbia'),('VT','Vermont'),('WY','Wyoming'),('PR','Puerto Rico'),('VI','Virgin Islands'),('GU','Guam'),
-                       ('NMI','Northern Mariana Islands')])
-state_to_ticker = {v: k for k, v in state_to_ticker.items()}
-state_to_ticker['Northern Mariana Islands']
-
+# %% [markdown]
+# Let's also include the state ticker (i.e. Minnesota --> MN) as a column in the Pandas dataframe. (Because the US population info is given by state tickers).
 
 # %%
 df['state_ticker'] = df.apply(lambda row: get_ticker(row.state),axis = 1)
 df['Population'] = df.apply(lambda row: get_population(row.state_ticker), axis=1)
 
 # %% [markdown]
-# Great! Let's also make a helper function to select data from a region, starting when the pandemic hit to be able to fit models.
+#  Just checking to make sure the data is here...
+
+# %%
+df.head()
+
+# %% [markdown]
+#  Great! Let's also make a helper function to select data from a state, starting when the pandemic hit to be able to fit models. 
+#  
+#  We could change the parameter "min_deaths" here if we want... it seems like an arbitrary choice.
 
 # %%
 # return data ever since first min_cases cases
@@ -100,9 +98,9 @@ def select_region(df, region, min_deaths=50):
     return d
 
 # %% [markdown]
-# ## erf model
+#  ## MODEL 1 of 3: erf model
 # %% [markdown]
-# Let's start with a simple model used in this major paper by IHME: https://www.medrxiv.org/content/10.1101/2020.03.27.20043752v1. Just fit an erf function, nothing else.
+#  Let's start with a simple model used in this major paper by IHME: https://www.medrxiv.org/content/10.1101/2020.03.27.20043752v1. Just fit an erf function, nothing else.
 
 # %%
 from scipy.special import erf
@@ -140,7 +138,9 @@ def erf_fit(params, data):
     return error
 
 # %% [markdown]
-# Now let's try to have something to run the fit and plot the results, including a prediction. To estimate errors, we'll use `curve_fit` and the covariance matrix it returns. Sampling parameters from a Gaussian distribution around the fit, we then bootstrap errors corresponding to 25th and 75th percentile predictions.
+#  Now let's try to have something to run the fit and plot the results, including a prediction. To estimate errors, we'll use `curve_fit` and the covariance matrix it returns. Sampling parameters from a Gaussian distribution around the fit, we then bootstrap errors corresponding to 25th and 75th percentile predictions.
+# 
+#  Maybe we can change the way that the quantile predictions are made. The quantile predictions get crazy later (~1e150, which is way to fucking big).
 
 # %%
 from bokeh.models import Span
@@ -157,11 +157,15 @@ def plot_erf_with_errors_sample(df, region, extrapolate=1, boundary=None):
     all_out = []
     proper = []
     for k in keys:
-        erf_params0 = [np.log10(np.max(data[k])), .1, 20]
+        erf_params0 = [np.log10(np.max(data[k])), .1, 30]
         y = data[k].values[:boundary]
         popt, pcov = curve_fit(erf_curve, data['date_processed'].values[:boundary], y, p0=erf_params0)
         errors = np.sqrt(np.diag(pcov))
-
+        #======BEGIN=======DEBUGGING================================================================================
+        if k == 'deaths':
+            print('popt = ', popt)
+            print('errors = ', errors)
+        #========END=========DEBUGGING================================================================================
         all_s = []
         samples = 100
         for i in range(samples):
@@ -212,13 +216,15 @@ def plot_erf_with_errors_sample(df, region, extrapolate=1, boundary=None):
     bokeh.io.show(p)
 
 # %% [markdown]
-# And how well does this model do at prediction? We train it on days 0-16 (left of the vertical line), and we try to predict days afterwards.
+#  And how well does this model do at prediction? We train it on days 0-16 (left of the vertical line), and we try to predict days afterwards.
 
 # %%
-plot_erf_with_errors_sample(df, 'Washington', 2, 19)
+plot_erf_with_errors_sample(df, 'Washington', 2, 10)
 
 # %% [markdown]
-# Hm. Let's check how it performs more systematically. Let's try adjusting how long we train and predict for.
+#  Hm. Let's check how it performs more systematically. Let's try adjusting how long we train and predict for.
+# 
+#  There is obviously some kind of fitting error that's happening here. But I don't care that much because the erf model is not even a great model.
 
 # %%
 start = 12
@@ -226,21 +232,22 @@ step = 4
 ind = 0
 results = []
 one_more = False
-while start + ind*step <= 28:
+while start + ind*step <= 18:
     boundary = start + ind*step
     plot_erf_with_errors_sample(df, 'Washington', 2, boundary)
     ind += 1
 
 # %% [markdown]
-# The model seems to think that the pandemic will flatten out in the next couple days. Given the earlier plots, I doubt that is right. We can check it on another region and see what happens! What regions can we choose from? We need a region with enough data.
+#  The model seems to think that the pandemic will flatten out in the next couple days. Given the earlier plots, I doubt that is right. We can check it on another region and see what happens! What regions can we choose from? We need a region with enough data.
 
 # %%
-regions = sorted(np.unique(df['state'].values))
+regions = sorted(np.unique(df['state'].values)) # this is just alphabetical
 print(regions)
-print([np.amax(df.loc[df['state'] == r]['cases'].values) for r in regions])
+for r in regions:
+    print(r + ' has ',[np.amax(df.loc[df['state'] == r]['cases'].values)], ' cases')
 
 # %% [markdown]
-# The predictions look a little better for Emilia Romagna, but it appears that the error bars for anything earlier than 16-day prediction are enormous. By the time you reach 20 days, however, we only have 22 days of data, so it seems a little trivial to predict.
+#  The predictions look a little better for Emilia Romagna, but it appears that the error bars for anything earlier than 16-day prediction are enormous. By the time you reach 20 days, however, we only have 22 days of data, so it seems a little trivial to predict.
 
 # %%
 # start = 16
@@ -254,19 +261,19 @@ print([np.amax(df.loc[df['state'] == r]['cases'].values) for r in regions])
 #     ind += 1
 
 # %% [markdown]
-# Time to move on to a more standard epidemiological model.
+#  Time to move on to a more standard epidemiological model.
 # %% [markdown]
-# ## SEIR-QD model
+#  ## MODEL 2 of 3: SEIR-QD model
 # %% [markdown]
-# Ok, will this model isn't too standard. It's selected as one of the best-performing models from "Rational evaluation of various epidemic models based on the COVID-19 data of China" (https://www.medrxiv.org/content/10.1101/2020.03.12.20034595v1.full.pdf), where it turned out to be one of the better models in terms of early-stage data collection. It takes into effect quarantine and self-protection, but not from data; it just makes assumptions about how people behave. The differential equations can be found on page 8 of the supplement: https://www.medrxiv.org/content/medrxiv/suppl/2020/03/16/2020.03.12.20034595.DC1/2020.03.12.20034595-1.pdf. Thanks @Liana Merk for doing the initial work on this model!
+#  Ok, will this model isn't too standard. It's selected as one of the best-performing models from "Rational evaluation of various epidemic models based on the COVID-19 data of China" (https://www.medrxiv.org/content/10.1101/2020.03.12.20034595v1.full.pdf), where it turned out to be one of the better models in terms of early-stage data collection. It takes into effect quarantine and self-protection, but not from data; it just makes assumptions about how people behave. The differential equations can be found on page 8 of the supplement: https://www.medrxiv.org/content/medrxiv/suppl/2020/03/16/2020.03.12.20034595.DC1/2020.03.12.20034595-1.pdf. Thanks @Liana Merk for doing the initial work on this model!
 # 
-# Parameters:
-# * $\beta$ = infection rate, from earlier plotting, $10^{(-8)} - 10^{(-6)}$ seem reasonable.
-# * $\delta$ = recovery rate, which we think is on the order of 10-40 days.
-# * $\gamma$ = transition of exposed individuals to infected, which we aren't sure of, especially with the unknown number of asymptomatics.
-# * $\alpha$ = protection rate of susceptible individuals, which we also don't know, and is most likely dynamic over the course of the outbreak.
-# * $\lambda$ = transition rate of infected to quarantined with infection, same as above.
-# * $\kappa$ = death rate, which we think is around 0.01-0.06. We will leave a range between 0.01 and 0.1.
+#  Parameters:
+#  * $\beta$ = infection rate, from earlier plotting, $10^{(-8)} - 10^{(-6)}$ seem reasonable.
+#  * $\delta$ = recovery rate, which we think is on the order of 10-40 days.
+#  * $\gamma$ = transition of exposed individuals to infected, which we aren't sure of, especially with the unknown number of asymptomatics.
+#  * $\alpha$ = protection rate of susceptible individuals, which we also don't know, and is most likely dynamic over the course of the outbreak.
+#  * $\lambda$ = transition rate of infected to quarantined with infection, same as above.
+#  * $\kappa$ = death rate, which we think is around 0.01-0.06. We will leave a range between 0.01 and 0.1.
 
 # %%
 def seirqd(dat, t, params, N):
@@ -355,7 +362,9 @@ def fit_leastsq_qd(params, data):
     return error
 
 # %% [markdown]
-# Let's check if this is reasonable with a manual fit to Washington. Anyway, we need to provide the optimization method an initial guess of the parameters, so this gives us a good chance to make a reasonable guess and speed up the optimization. Some good guesses are provided by the SEIR model here: https://gabgoh.github.io/COVID/index.html.
+#  Let's check if this is reasonable with a manual fit to the US state of Washington. Anyway, we need to provide the optimization method an initial guess of the parameters, so this gives us a good chance to make a reasonable guess and speed up the optimization. Some good guesses are provided by the SEIR model here: https://gabgoh.github.io/COVID/index.html.
+# 
+#  NOT SURE WHY THIS FIT DOESN'T WORK WELL
 
 # %%
 get_ipython().run_line_magic('matplotlib', 'notebook')
@@ -374,8 +383,13 @@ plt.scatter(d['date_processed'], d['deaths'])
 plt.plot(d['date_processed'], s[:, 5])
 plt.show()
 
+print('Do the initial conditions sum to one? If not, what do they physically mean?')
+print('They sum to ',sum(initial_conditions))
+
 # %% [markdown]
-# Looks good! How about actually fitting it now? We need a plotting function!
+#  Looks good! How about actually fitting it now? We need a plotting function!
+# 
+#  ^ DOES NOT LOOK GOOD! LOOKS BAD! Do we need to change the initial conditions? This model ends up working later, so something must change to make it work for the state of Washington.
 
 # %%
 import itertools
@@ -419,7 +433,7 @@ def plot_qd(res, p0_params, p0_initial_conditions, df, region, extrapolate=1, bo
     bokeh.io.show(p)
 
 # %% [markdown]
-# We'll need to estimate errors from the optimization procedure. I transferred some of the relevant code from `curve_fit` to work for this kind of model:
+#  We'll need to estimate errors from the optimization procedure. I transferred some of the relevant code from `curve_fit` to work for this kind of model:
 
 # %%
 from scipy.linalg import svd
@@ -429,7 +443,7 @@ def get_errors(res, p0):
     ysize = len(res.fun)
     cost = 2 * res.cost  # res.cost is half sum of squares!
     popt = res.x
-    # Do Moore-Penrose inverse discarding zero singular values.
+    # Do Moore-Penrose inverse (Pseudoinverse) discarding zero singular values.
     _, s, VT = svd(res.jac, full_matrices=False)
     threshold = np.finfo(float).eps * max(res.jac.shape) * s[0]
     s = s[s > threshold]
@@ -459,7 +473,7 @@ def get_errors(res, p0):
     return perr
 
 # %% [markdown]
-# To do the optimization, we should define reasonable ranges for the parameters as well.
+#  To do the optimization, we should define reasonable ranges for the parameters as well.
 
 # %%
 param_ranges = [(0.5, 3.0), (0.0, 0.5), (0.0, 0.5), (0.01, 0.5), (0.0, 0.5), (0.005, 0.1)]
@@ -470,14 +484,16 @@ ranges = param_ranges + initial_ranges
 
 # %%
 from scipy.optimize import least_squares
-res = least_squares(fit_leastsq_qd, guesses, args=(select_region(df, 'Washington'),), bounds=np.transpose(np.array(ranges)))
+res = least_squares(fit_leastsq_qd, guesses, args=(select_region(df, 'Wisconsin'),), bounds=np.transpose(np.array(ranges)))
 
 
 # %%
-plot_qd(res, params, initial_conditions, df, 'Washington', extrapolate=2, plot_infectious=True)
+plot_qd(res, params, initial_conditions, df, 'Wisconsin', extrapolate=2, plot_infectious=True)
 
 # %% [markdown]
-# This is quite misleading! We don't actually know how many people are infected, so this model isn't quite what we're looking for. Instead, we only know the people who were tested as infected; they usually have symptoms. I won't bother with the error analysis for this model, but we can see how it holds up to prediction.
+#  This is quite misleading! We don't actually know how many people are infected, so this model isn't quite what we're looking for. Instead, we only know the people who were tested as infected; they usually have symptoms. I won't bother with the error analysis for this model, but we can see how it holds up to prediction.
+# 
+#  HERE THE MODEL FINALLY WORKS FOR US DATA (Washington). Note that initial conditions are given here. I'm not sure where they got the initial conditions, but in the code, they are defined 5 or 6 cells above.
 
 # %%
 start = 10
@@ -485,27 +501,29 @@ step = 4
 ind = 0
 results = []
 one_more = False
-while start + ind*step <= 28:
+while start + ind*step <= 18:
     boundary = start + ind*step
-    res = least_squares(fit_leastsq_qd, guesses, args=(select_region(df, 'Washington')[:boundary],), bounds=np.transpose(np.array(ranges)))
-    plot_qd(res, params, initial_conditions, df, 'Washington', extrapolate=2, boundary=boundary, plot_infectious=True)
+    res = least_squares(fit_leastsq_qd, guesses, args=(select_region(df, 'New York')[:boundary],), bounds=np.transpose(np.array(ranges)))
+    plot_qd(res, params, initial_conditions, df, 'New York', extrapolate=2, boundary=boundary, plot_infectious=True)
     ind += 1
 
 # %% [markdown]
-# Despite being conceptually wrong, this produces much more satisfactory predictions of fatality rates than the erf model. The infectious predictions should be taken with a (very large) grain of salt anyway, since we know it isn't really predicting the infected population.
+#  Despite being conceptually wrong, this produces much more satisfactory predictions of fatality rates than the erf model. The infectious predictions should be taken with a (very large) grain of salt anyway, since we know it isn't really predicting the infected population.
 # %% [markdown]
-# ## Fancy stuff: $\mathbf{SEI_A I_S R}$ with empirical quarantine
+#  ## MODEL 3 of 3: $\mathbf{SEI_A I_S R}$ with empirical quarantine
 # %% [markdown]
-# The motivation for this model is to add two crucial ingredients: quarantine data and asymptomatic cases. For quarantine analysis, we find an effective population size based on what fraction of the population is moving according to https://citymapper.com/cmi/milan. (Since Milan is the capital of Lombardy, we perform the analysis for that region.) To make the quarantine more realistic, we model a "leaky" quarantine, where the susceptible population is given by the mobility from above plus some offset. To treat asymptomatic cases, we introduce states $I_A$ (asymptomatic) and $I_S$ (symptomatic) according to the following sketch and differential equations:
+#  The motivation for this model is to add two crucial ingredients: quarantine data and asymptomatic cases. For quarantine analysis, we find an effective population size based on what fraction of the population is moving according to https://citymapper.com/cmi/milan. (Since Milan is the capital of Lombardy, we perform the analysis for that region.) To make the quarantine more realistic, we model a "leaky" quarantine, where the susceptible population is given by the mobility from above plus some offset. To treat asymptomatic cases, we introduce states $I_A$ (asymptomatic) and $I_S$ (symptomatic) according to the following sketch and differential equations:
 # %% [markdown]
-# ![SEIIR + quarantine](images/overview.png)
+#  ![SEIIR + quarantine](images/overview.png)
 # %% [markdown]
-# Since this is prototyping the model, we manually enter the chart above (raw data is at the link above) and implement it. We also have a testing function $T(t)$ (called `tau(t)` in the code) that allows us to try out different testing strategies for asymptomatic populations. Sorry about the confusing variable names below: parameters are renamed as $\sigma\to$ `alpha`, $s\to$ `sigma`, and $d\to$ `delta`. Not shown in the equations above but included in the diagram is a fixed offset (`offset`) for the leaky quarantine model.
+#  Since this is prototyping the model, we manually enter the chart above (raw data is at the link above) and implement it. We also have a testing function $T(t)$ (called `tau(t)` in the code) that allows us to try out different testing strategies for asymptomatic populations. Sorry about the confusing variable names below: parameters are renamed as $\sigma\to$ `alpha`, $s\to$ `sigma`, and $d\to$ `delta`. Not shown in the equations above but included in the diagram is a fixed offset (`offset`) for the leaky quarantine model.
+# 
+#  ***Regarding "TODO fix data imputation", we need to somehow get this data based on US states. Currently, the mobility data (and therefore quarantine data) is hard coded into the vector 'moving'. I'm not sure what shift is. Some arbitrary parameter that probably also needs to be fit...
 
 # %%
 # TODO fix data imputation
 def q(t, N, shift):
-    moving = np.array([57, 54, 52, 51, 49, 47, 46, 45, 44, 43, 39, 37, 34, 23, 19, 13, 10, 7, 6, 5, 5, 7, 6, 5, 4, 4, 3, 3, 4, 4, 3, 3, 3, 3, 2])/100
+    moving = np.array([57, 54, 52, 51, 49, 47, 46, 45, 44, 43, 39, 37, 34, 23, 19, 13, 10, 7, 6, 5, 5, 7, 6, 5, 4, 4, 3, 3, 4, 4, 3, 3, 3, 3, 2])/100 
     q = N*(1-moving) - shift*N
     if np.round(t) >= len(q):
         return q[-1]
@@ -602,11 +620,13 @@ def fit_leastsq_z(params, data):
     R = s[:,4]
     D = s[:,5]
     
-    error = np.concatenate((D-Ddata, I_S - Idata))
+    error = np.concatenate(((D-Ddata), I_S - Idata))
     return error
 
 # %% [markdown]
-# Again, we find some good initial parameters.
+#  Again, we find some good initial parameters.
+# 
+#  *** We need to find some good initial parameters. ):
 
 # %%
 get_ipython().run_line_magic('matplotlib', 'notebook')
@@ -682,9 +702,10 @@ def plot_with_errors_sample_z(res, p0_params, p0_initial_conditions, df, region,
 
     p.legend.location = 'top_left'
     bokeh.io.show(p)
+    return all_s,s1,s2
 
 # %% [markdown]
-# Let's define the initial ranges of the constants for the ODE.
+#  Let's define the initial ranges of the constants for the ODE.
 
 # %%
 # beta, alpha, sigma, ra, rs, delta, shift
@@ -696,19 +717,37 @@ ranges = param_ranges + initial_ranges
 
 
 # %%
+# beta, alpha, sigma, ra, rs, delta, shift
+param_ranges = [(1.0, 2.0), (0.1, 0.5), (0.1, 0.5), (0.05, 0.5), (0.32, 0.36), (0.005, 0.05), (0.1, 0.6)]
+initial_ranges = [(1.0e-7, 0.001), (1.0e-7, 0.001), (1.0e-7, 0.001), (1.0e-7, 0.001)]
+
+guesses = params + initial_conditions
+ranges = param_ranges + initial_ranges
+
+boundary = 16
+res = least_squares(fit_leastsq_z, guesses, args=(select_region(df, 'Washington')[:boundary],), bounds=np.transpose(np.array(ranges)),jac = '3-point')
+all_s,s1,s2 = plot_with_errors_sample_z(res, params, initial_conditions, df, 'Washington', extrapolate=1, boundary=boundary, plot_infectious=True)
+perr = get_errors(res,np.zeros((11,1)))
+print('parameter standard deviations = ',perr)
+
+
+# %%
 start = 8
 step = 4
 ind = 0
 results = []
 one_more = False
-while start + ind*step <= 28:
+while start + ind*step <= 18:
     boundary = start + ind*step
-    res = least_squares(fit_leastsq_z, guesses, args=(select_region(df, 'Washington')[:boundary],), bounds=np.transpose(np.array(ranges)))
-    plot_with_errors_sample_z(res, params, initial_conditions, df, 'Washington', extrapolate=2, boundary=boundary, plot_infectious=True)
+    res = least_squares(fit_leastsq_z, guesses, args=(select_region(df, 'Washington')[:boundary],), bounds=np.transpose(np.array(ranges)),jac = '3-point')
+    plot_with_errors_sample_z(res, params, initial_conditions, df, 'Washington', extrapolate=1, boundary=boundary, plot_infectious=True)
     ind += 1
 
 # %% [markdown]
-# Just like SEIR-QD, the predictions of cases aren't so great, although the predictions of fatalaties (which matters more and has less data bias) is reasonably accurate. The model also produces prediction that around 2/3 of the cases are asymptomatic (or at least not tested). This corresponds roughly to some recent studies, such as the 50-75% number reported after testing an entire town of 3,300 in Italy (https://www.repubblica.it/salute/medicina-e-ricerca/2020/03/16/news/coronavirus_studio_il_50-75_dei_casi_a_vo_sono_asintomatici_e_molto_contagiosi-251474302/?ref=RHPPTP-BH-I251454518-C12-P3-S2.4-T1) and similar results in Iceland (https://www.government.is/news/article/2020/03/15/Large-scale-testing-of-general-population-in-Iceland-underway/).
+# ***HUUUUGE uncertainty bars. Need to figure out why. Maybe because we don't have good fit parameters, so the covariance is huge.
+# 
+# 
+#  Just like SEIR-QD, the predictions of cases aren't so great, although the predictions of fatalaties (which matters more and has less data bias) is reasonably accurate. The model also produces prediction that around 2/3 of the cases are asymptomatic (or at least not tested). This corresponds roughly to some recent studies, such as the 50-75% number reported after testing an entire town of 3,300 in Italy (https://www.repubblica.it/salute/medicina-e-ricerca/2020/03/16/news/coronavirus_studio_il_50-75_dei_casi_a_vo_sono_asintomatici_e_molto_contagiosi-251474302/?ref=RHPPTP-BH-I251454518-C12-P3-S2.4-T1) and similar results in Iceland (https://www.government.is/news/article/2020/03/15/Large-scale-testing-of-general-population-in-Iceland-underway/).
 
 # %%
 

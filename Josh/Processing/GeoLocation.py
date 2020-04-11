@@ -20,6 +20,7 @@ fips=GeoDat[:,0].astype(int)
 
 # Create dictionary which relates fips integer code to shape (2,) np array of [long,lat]
 GeoDict={fips[i]:LatLong[i] for i in range(len(fips))}
+GeoDict[0]=np.nan
 File=open('Josh/Processing/Processed Data/GeoDict.pkl','wb')
 pickle.dump(GeoDict,File)
 File.close()
