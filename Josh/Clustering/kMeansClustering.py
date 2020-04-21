@@ -19,24 +19,23 @@ def Kmeans(K,X):
         for i in range(K):
             ClusterStack[:,:,i]=np.tile(Clusters[[i],:],(len(X),1))
         XStack=np.tile(X.reshape(X.shape+(1,)),K)
-        # for i in range(K):
         ClusterAssignments=np.linalg.norm((XStack-ClusterStack),axis=1).argmin(1)
+        ClustDist=np.linalg.norm((XStack-ClusterStack),axis=1).min(1).mean()
         if np.array_equal(oldClusters,ClusterAssignments):
             Continue=False
-
-        cols=['r','b','g','k','y','c','m']
-        colors=np.array([None]*len(X))
-        for i in range(K):
-            colors[ClusterAssignments==i]=cols[i%len(cols)]
-        print(ClusterAssignments)
-        plt.figure
-        plt.scatter(X[:,0],X[:,1],color=colors)
-        # plt.scatter(Clusters[:,0],Clusters[:,1],marker='*',color=cols)
-        plt.show()
+            break
+        # cols=['r','b','g','k','y','c','m']
+        # colors=np.array([None]*len(X))
+        # for i in range(K):
+        #     colors[ClusterAssignments==i]=cols[i%len(cols)]
+        # plt.figure
+        # plt.scatter(X[:,0],X[:,1],color=colors)
+        # plt.show()
         oldC=Clusters.copy()
         for i in range(K):
             Clusters[i,:]=X[ClusterAssignments==i,:].mean(0)
             Clusters[np.isnan(Clusters)]=oldC[np.isnan(Clusters)]
-    return ClusterAssignments
+    
+    return ClusterAssignments,ClustDist
 
 
