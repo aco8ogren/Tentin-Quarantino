@@ -24,6 +24,7 @@ def Kmeans(K,X):
         if np.array_equal(oldClusters,ClusterAssignments):
             Continue=False
             break
+        
         # cols=['r','b','g','k','y','c','m']
         # colors=np.array([None]*len(X))
         # for i in range(K):
@@ -31,10 +32,17 @@ def Kmeans(K,X):
         # plt.figure
         # plt.scatter(X[:,0],X[:,1],color=colors)
         # plt.show()
-        oldC=Clusters.copy()
+        
+        # oldC=Clusters.copy()
         for i in range(K):
             Clusters[i,:]=X[ClusterAssignments==i,:].mean(0)
-            Clusters[np.isnan(Clusters)]=oldC[np.isnan(Clusters)]
+            NANClusters=[]
+            isnanClusters=np.isnan(Clusters)
+            numNanClusters=isnanClusters.sum(0)[0]
+            for i in range(len(mins)):
+                NANClusters.append(np.random.uniform(size=(numNanClusters),low=mins[i],high=maxs[i]))
+            NANClusters=np.array(NANClusters)
+            Clusters[isnanClusters]=NANClusters.flatten()
     
     return ClusterAssignments,ClustDist
 

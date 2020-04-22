@@ -1,3 +1,4 @@
-import os
-Direc='Tentin-Quarantino'
-os.chdir(os.getcwd()[:os.getcwd().find(Direc)+len(Direc)])
+import git
+repo=git.Repo('.', search_parent_directories=True)
+cwd=repo.working_dir
+os.chdir(cwd)
