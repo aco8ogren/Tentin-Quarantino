@@ -1,0 +1,4 @@
+/central/home/jlassman/Documents/Tentin-Quarantino/Josh/Clustering/kMeansClustering.py:38: RuntimeWarning: Mean of empty slice.
+  Clusters[i,:]=X[ClusterAssignments==i,:].mean(0)
+/central/software/python/3.7.0/lib/python3.7/site-packages/numpy/core/_methods.py:78: RuntimeWarning: invalid value encountered in true_divide
+  ret, rcount, out=ret, casting='unsafe', subok=False)
