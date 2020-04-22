@@ -21,14 +21,14 @@ for i,val in enumerate(vals):
 vals=np.array(vals)
 Output=[]
 # ks=np.arange(30,100,5)
-ks=np.arange(10,1000,10)
+ks=np.arange(10,500,5)
 for k in ks:
 # for k in [1000]:
     print(k)
     clust,cdist=Kmeans(k,vals)
     Output.append([k,len(np.unique(clust)),cdist])
 Output=np.array(Output)
-np.savetxt('Josh/Clustering/ClusterData2.txt',Output)
+np.savetxt('Josh/Clustering/ClusterDataSqrd.txt',Output)
 
 
 # %%
