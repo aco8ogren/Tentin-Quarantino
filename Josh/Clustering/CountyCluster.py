@@ -28,7 +28,7 @@ for k in ks:
     clust,cdist=Kmeans(k,vals)
     Output.append([k,len(np.unique(clust)),cdist])
 Output=np.array(Output)
-np.savetxt('Josh/Clustering/ClusterDat_refined.txt',Output)
+np.savetxt('Josh/Clustering/ClusterData2.txt',Output)
 
 
 # %%

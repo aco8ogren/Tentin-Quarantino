@@ -14,4 +14,4 @@
 
 
 # LOAD MODULES, INSERT CODE, AND RUN YOUR PROGRAMS HERE
-python3 CountyCluster.py >> /home/jlassman/JobOutputs/clustertest.out
+python3 CountyCluster.py > clustertest.out
