@@ -4,6 +4,7 @@ import os
 import datetime
 import json
 import git
+import numpy as np
 repo=git.Repo('.', search_parent_directories=True)
 cwd=repo.working_dir
 os.chdir(cwd)
@@ -23,13 +24,16 @@ def process_covid_data(df):
     df = df.loc[df['state'] != 'Guam']
     return df
 
+
+
 def process_mobility_data(df):
     df["date"] = pd.to_datetime(mobility_df["date"])
     df = df[["admin1", "date",'fips', "m50", "m50_index"]]
     df = df.rename(columns={'admin1': 'state'})
 
-    # We make this change to be consistent with other data to make merging clean
+    # We make this change to be consistent with other data to make merging cleanP
     df.loc[df['state'] == 'Washington, D.C.', "state"] = "District of Columbia"
+    df=df.loc[~np.isnan(df['fips'])]
     return df
 
 def process_bed_data(df):
@@ -41,14 +45,16 @@ def process_bed_data(df):
     df = df.rename(columns={"state_y": "state"})
     return df
 
+# def process_cluster_data(df):
+#     return df[[
+
 
 # %%
 # Read in the data
 covid_df = pd.read_csv(f"data/us/covid/nyt_us_counties_daily.csv")
 bed_df = pd.read_csv(f"data/us/hospitals/bed_densities.csv")
 mobility_df = pd.read_csv(f"data/us/mobility/DL-us-mobility-daterow.csv")
-
-
+cluster_df=pd.read_csv(f"Josh\Clustering\FinalClusters.csv")
 # %%
 # Apply the above processing steps
 covid_df = process_covid_data(covid_df)
@@ -61,10 +67,10 @@ mobility_df = process_mobility_data(mobility_df)
     # to use a larger date range, but that would require imputing mobility data (the repo doesn't handle nans)
     # and making a larger percentage of our death data just a sequence of 0's (for states with no death/cases)
     # data
-df = covid_df.merge(mobility_df, how='right', on=['date','fips', 'state'])
+df = covid_df.merge(mobility_df, how='left', on=['date','fips', 'state'])
 
 # Add hospital data
-df = df1.merge(bed_df, how='left', on='state')
+df = df.merge(bed_df, how='left', on='state')
 
 # The initial right join will add nans for states without case/death data in the date range
     # of the mobility dataset, so we replace with 0's
@@ -77,11 +83,7 @@ df['id'] = df['state']
 
 # df['day_of_week'] = df['date'].dt.dayofweek
 df = df.sort_values(by=['date','fips'])
-
-# %% [markdown]
-# # Code to tell this repo how to use this data
-# 
-# Examples can be found in the repo in the data_formatters directory
+ddf2=df.merge(cluster_df,how='left',on='fips')
 
 # %%
 import sys
@@ -267,8 +269,8 @@ class covidFormatter(GenericDataFormatter):
         fixed_params = {
             'total_time_steps':21,     # Total width of the Temporal Fusion Decoder
             'num_encoder_steps': 14,    # Length of LSTM decoder (ie. # historical inputs)
-            'num_epochs': 30,            # Max number of epochs for training 
-            'early_stopping_patience': 5, # Early stopping threshold for # iterations with no loss improvement
+            'num_epochs': 10,            # Max number of epochs for training 
+            'early_stopping_patience': 10, # Early stopping threshold for # iterations with no loss improvement
             'multiprocessing_workers': 5  # Number of multi-processing workers
         }
 
@@ -298,8 +300,8 @@ model_params = {'dropout_rate': 0.1,      # Dropout discard rate
                }
 
 # Folder to save network weights during training.
-model_folder = os.path.join("results", 'saved_models', 'covid', 'fixed')
-model_params['model_folder'] = model_folder
+# model_folder = os.path.join("results", 'saved_models', 'covid', 'fixed')
+model_params['model_folder'] = 'Josh\\Transformer\\Checkpoints'
 
 model_params.update(data_params)
 
