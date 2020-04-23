@@ -20,7 +20,7 @@ def Kmeans(K,X):
             ClusterStack[:,:,i]=np.tile(Clusters[[i],:],(len(X),1))
         XStack=np.tile(X.reshape(X.shape+(1,)),K)
         ClusterAssignments=np.linalg.norm((XStack-ClusterStack),axis=1).argmin(1)
-        ClustDist=np.linalg.norm((XStack-ClusterStack),axis=1).min(1).mean()
+        ClustDist=((np.linalg.norm((XStack-ClusterStack),axis=1).min(1))**2).mean()
         if np.array_equal(oldClusters,ClusterAssignments):
             Continue=False
             break
