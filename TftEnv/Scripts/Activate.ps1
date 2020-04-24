@@ -27,7 +27,7 @@ function global:deactivate ([switch]$NonDestructive) {
 
 deactivate -nondestructive
 
-$env:VIRTUAL_ENV="C:\Users\lassm\OneDrive - California Institute of Technology\Documents\Caltech\G2\Spring\Cs156b\Tentin-Quarantino\TftEnv"
+$env:VIRTUAL_ENV="C:\Users\lassm\NotDocuments\Tentin-Quarantino\TFTenv"
 
 if (! $env:VIRTUAL_ENV_DISABLE_PROMPT) {
     # Set the prompt to include the env name
@@ -35,7 +35,7 @@ if (! $env:VIRTUAL_ENV_DISABLE_PROMPT) {
     function global:_OLD_VIRTUAL_PROMPT {""}
     copy-item function:prompt function:_OLD_VIRTUAL_PROMPT
     function global:prompt {
-        Write-Host -NoNewline -ForegroundColor Green '(TftEnv) '
+        Write-Host -NoNewline -ForegroundColor Green '(TFTenv) '
         _OLD_VIRTUAL_PROMPT
     }
 }
