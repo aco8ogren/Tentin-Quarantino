@@ -3,8 +3,17 @@ import numpy as np
 import sys
 import traceback
 from tqdm.auto import tqdm
+import git
+import os
 
-csv_to_score = '../sample_submission.csv'
+# Setup paths
+repo = git.Repo("./", search_parent_directories=True)
+homedir = repo.working_dir
+
+os.chdir(homedir)
+
+# Do the rest
+csv_to_score = '200423_Epid.csv'
 
 def get_date(x):
     return '-'.join(x.split('-')[:3])
@@ -32,14 +41,14 @@ def evaluate(test_df, user_df):
         total_loss += pinball_loss(join_df['deaths'].values, join_df[column].values, quantile) / 9.0
     return total_loss
 
-start_date = '2020-04-17' # First date to include in scoring
-daily_df = pd.read_csv('../data/us/covid/nyt_us_counties_daily.csv') # Daily data processed from NYT.
+start_date = '2020-04-22' # First date to include in scoring
+daily_df = pd.read_csv('data/us/covid/nyt_us_counties_daily.csv') # Daily data processed from NYT.
 end_date = daily_df['date'].max() # End with the most recent date.
 
 daily_df = daily_df[(daily_df['date'] <= end_date)  & (daily_df['date'] >= start_date)] # Select correct date range.
 daily_df['id'] = daily_df['date'] +'-'+ daily_df['fips'].astype(str) # Create id column
 
-sample_submission = pd.read_csv('../sample_submission.csv') # Load the sample submission with all 0's
+sample_submission = pd.read_csv('sample_submission.csv') # Load the sample submission with all 0's
 sample_submission['date'] = sample_submission['id'].apply(get_date)
 sample_submission['fips'] = sample_submission['id'].apply(get_fips).astype('int')
 sample_submission = sample_submission[(sample_submission['date'] <= end_date)  & (sample_submission['date'] >= start_date)]
