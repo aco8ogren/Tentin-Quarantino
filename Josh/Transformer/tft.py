@@ -67,7 +67,7 @@ mobility_df = process_mobility_data(mobility_df)
     # to use a larger date range, but that would require imputing mobility data (the repo doesn't handle nans)
     # and making a larger percentage of our death data just a sequence of 0's (for states with no death/cases)
     # data
-df = covid_df.merge(mobility_df, how='left', on=['date','fips', 'state'])
+df = covid_df.merge(mobility_df, how='right', on=['date','fips', 'state'])
 
 # Add hospital data
 df = df.merge(bed_df, how='left', on='state')
@@ -75,15 +75,24 @@ df = df.merge(bed_df, how='left', on='state')
 # The initial right join will add nans for states without case/death data in the date range
     # of the mobility dataset, so we replace with 0's
 df = df.fillna(value=0)
+df=pd.merge(df,cluster_df,how='left',on='fips')
+
+
+
+MeanCols=['deaths','cases','m50','m50_index']
+MeanColNames=['mean_'+col for col in MeanCols]
+MeanDf=df[['date','cluster']+MeanCols].groupby(['date','cluster']).mean().reset_index().rename(columns=dict(zip(MeanCols,MeanColNames)))
+
+TotCols=['deaths','cases','m50']
+TotColNames=['total_'+col for col in TotCols]
+TotDf=df[['date','cluster']+TotCols].groupby(['date','cluster']).sum().reset_index().rename(columns=dict(zip(TotCols,TotColNames)))
+
+df=pd.merge(df,MeanDf,how='right',on=['date','cluster'])
+df=pd.merge(df,TotDf,how='right',on=['date','cluster'])
 
 
 # %%
-# Add an id column so our formatter class (below) can include state as both an identifier and categorical data
-df['id'] = df['state']
 
-# df['day_of_week'] = df['date'].dt.dayofweek
-df = df.sort_values(by=['date','fips'])
-ddf2=df.merge(cluster_df,how='left',on='fips')
 
 # %%
 import sys
@@ -113,15 +122,24 @@ import numpy as np
 class covidFormatter(GenericDataFormatter):
     """Defines and formats data for the covid dataset"""
     _column_definition = [
-        ('id', DataTypes.CATEGORICAL, InputTypes.ID),
         ('date', DataTypes.DATE, InputTypes.TIME),
         ('deaths', DataTypes.REAL_VALUED, InputTypes.TARGET),
+        ('mean_deaths', DataTypes.REAL_VALUED, InputTypes.TARGET),
+        ('total_deaths', DataTypes.REAL_VALUED, InputTypes.TARGET),
         ('cases', DataTypes.REAL_VALUED, InputTypes.OBSERVED_INPUT),
+        ('mean_cases', DataTypes.REAL_VALUED, InputTypes.OBSERVED_INPUT),
+        ('total_cases', DataTypes.REAL_VALUED, InputTypes.OBSERVED_INPUT),
         ('m50', DataTypes.REAL_VALUED, InputTypes.OBSERVED_INPUT),
+        ('mean_m50', DataTypes.REAL_VALUED, InputTypes.OBSERVED_INPUT),
+        ('total_m50', DataTypes.REAL_VALUED, InputTypes.OBSERVED_INPUT),
         ('m50_index', DataTypes.REAL_VALUED, InputTypes.OBSERVED_INPUT),
-        ('state', DataTypes.CATEGORICAL, InputTypes.STATIC_INPUT),
-        # ('day_of_week', DataTypes.CATEGORICAL, InputTypes.KNOWN_INPUT),
+        ('mean_m50_index', DataTypes.REAL_VALUED, InputTypes.OBSERVED_INPUT),
         ('bedspermille', DataTypes.REAL_VALUED, InputTypes.STATIC_INPUT),
+        ('long', DataTypes.REAL_VALUED, InputTypes.STATIC_INPUT),
+        ('lat', DataTypes.REAL_VALUED, InputTypes.STATIC_INPUT),
+        # ('id', DataTypes.CATEGORICAL, InputTypes.ID),
+        # ('state', DataTypes.CATEGORICAL, InputTypes.STATIC_INPUT),
+        # ('day_of_week', DataTypes.CATEGORICAL, InputTypes.KNOWN_INPUT),
     ]
     
     def split_data(self, df):
