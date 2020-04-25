@@ -13,7 +13,7 @@ homedir = repo.working_dir
 os.chdir(homedir)
 
 # Do the rest
-csv_to_score = '200423_Epid.csv'
+csv_to_score = 'Tentin_Quarantino_submit2.csv'
 
 def get_date(x):
     return '-'.join(x.split('-')[:3])
@@ -41,11 +41,11 @@ def evaluate(test_df, user_df):
         total_loss += pinball_loss(join_df['deaths'].values, join_df[column].values, quantile) / 9.0
     return total_loss
 
-start_date = '2020-04-22' # First date to include in scoring
+start_date = '2020-04-17' # First date to include in scoring
 daily_df = pd.read_csv('data/us/covid/nyt_us_counties_daily.csv') # Daily data processed from NYT.
 end_date = daily_df['date'].max() # End with the most recent date.
 
-daily_df = pd.read_csv('../data/us/covid/nyt_us_counties_daily.csv')
+daily_df = pd.read_csv('data/us/covid/nyt_us_counties_daily.csv')
 end_date = daily_df['date'].max()
 daily_df['id'] = daily_df['date'] +'-'+ daily_df['fips'].astype(str)
 preperiod_df = daily_df[(daily_df['date'] < start_date)]
