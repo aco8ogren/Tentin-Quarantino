@@ -399,6 +399,7 @@ def par_fun(states_in_core, main_df, mobility_df, coreInd, const, ErrFlag):#args
             print('   state with error: %s'%state)
             print('Setting ErrFlag for other workers')
             print('############################')
+            ErrFlag.set()
             raise
     # do non-risky stuff outside of try context
     print('############################')
