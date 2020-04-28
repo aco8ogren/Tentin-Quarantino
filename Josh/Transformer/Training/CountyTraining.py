@@ -4,9 +4,13 @@ import os
 import datetime
 import json
 import numpy as np
+import git
 
 # Set the current directory at wherever the repo is cloned
-os.chdir('/mnt/c/Users/lassm/NotDocuments/CS156b/Tentin-Quarantino')
+# os.chdir('/mnt/c/Users/lassm/NotDocuments/CS156b/Tentin-Quarantino')
+repo=git.Repo('.', search_parent_directories=True)
+cwd=repo.working_dir
+os.chdir(cwd)
 
 # Suppress warnings in cells to improve readability
 import warnings  
@@ -333,7 +337,7 @@ class covidFormatter(GenericDataFormatter):
         fixed_params = {
             'total_time_steps':21,     # Total width of the Temporal Fusion Decoder
             'num_encoder_steps': 14,    # Length of LSTM decoder (ie. # historical inputs)
-            'num_epochs': 1,            # Max number of epochs for training 
+            'num_epochs': 40,            # Max number of epochs for training 
             'early_stopping_patience': 5, # Early stopping threshold for # iterations with no loss improvement
             'multiprocessing_workers': 5  # Number of multi-processing workers
         }
@@ -368,7 +372,7 @@ model_params = {'dropout_rate': 0.1,      # Dropout discard rate
                }
 
 # Folder to save network weights during training.
-model_folder = os.path.join("Josh", 'Transformer', 'Checkpoints2')
+model_folder = os.path.join("Josh", 'Transformer', 'Checkpoints','County Checkpoints')
 model_params['model_folder'] = model_folder
 
 model_params.update(data_params)
