@@ -14,7 +14,7 @@ os.chdir(homedir)
 # %% 
 # Constants for analysis
 input_fln  = f"{homedir}/ALEX/wkspc.mat"             # input filename  (file to be reformatted)
-output_fln = f"{homedir}/Tentin_Qurantino_submit1.csv"           # output filename (file to be created)
+output_fln = f"{homedir}/Tentin_Quarantino_submit2.csv"           # output filename (file to be created)
 # sample file (TA-provided reference file)
 sampfile = f"{homedir}/sample_submission.csv"
 # current county deaths reference file (used when isAllocCounties=True)
