@@ -402,8 +402,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
         model.cache_batched_data(valid, "valid")
 
     # Train and save model
-    model.fit()
-    model.save(model_folder)
+    # model.fit()
+    # model.save(model_folder)
 
 
 
@@ -422,45 +422,45 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
 
 
-# # # # TFT Prediction
+# # # TFT Prediction
 
-# # # In[ ]:
-# #%%
-# Pred=train[['fips','date','bedspermille','long','lat','id','day_of_week']]
-# tf.reset_default_graph()
-# with tf.Graph().as_default(), tf.Session() as sess:
+# # In[ ]:
+#%%
+Pred=train[['fips','date','bedspermille','long','lat','id','day_of_week']]
+tf.reset_default_graph()
+with tf.Graph().as_default(), tf.Session() as sess:
 
-#     tf.keras.backend.set_session(sess)
+    tf.keras.backend.set_session(sess)
     
-#     # Create a model with same parameters as we trained with & load weights
-#     model = TemporalFusionTransformer(model_params)
-#     model.load(model_folder)
+    # Create a model with same parameters as we trained with & load weights
+    model = TemporalFusionTransformer(model_params)
+    model.load(model_folder)
     
-#     # Make forecasts
-#     output_map = model.predict(Pred, return_targets=True)
+    # Make forecasts
+    output_map = model.predict(train, return_targets=True)
 
-#     targets = data_formatter.format_predictions(output_map["targets"])
+    targets = data_formatter.format_predictions(output_map["targets"])
 
-#     # Format predictions
-#     p50_forecast = data_formatter.format_predictions(output_map["p50"])
-#     p90_forecast = data_formatter.format_predictions(output_map["p90"])
+    # Format predictions
+    p50_forecast = data_formatter.format_predictions(output_map["p50"])
+    p90_forecast = data_formatter.format_predictions(output_map["p90"])
 
-#     def extract_numerical_data(data):
-#         """Strips out forecast time and identifier columns."""
-#         return data[[
-#           col for col in data.columns
-#           if col not in {"forecast_time", "identifier"}
-#         ]]
+    def extract_numerical_data(data):
+        """Strips out forecast time and identifier columns."""
+        return data[[
+          col for col in data.columns
+          if col not in {"forecast_time", "identifier"}
+        ]]
 
-#     # Compute quantile losses using their functionality, but could easily be changed to pinball
-#     p50_loss = utils.numpy_normalised_quantile_loss(
-#         extract_numerical_data(targets), extract_numerical_data(p50_forecast),
-#         0.5)
-#     p90_loss = utils.numpy_normalised_quantile_loss(
-#         extract_numerical_data(targets), extract_numerical_data(p90_forecast),
-#         0.9)
-# print("Normalised quantile losses: P50={}, P90={}".format(p50_loss.mean(), p90_loss.mean()))
-# #%%
+    # Compute quantile losses using their functionality, but could easily be changed to pinball
+    p50_loss = utils.numpy_normalised_quantile_loss(
+        extract_numerical_data(targets), extract_numerical_data(p50_forecast),
+        0.5)
+    p90_loss = utils.numpy_normalised_quantile_loss(
+        extract_numerical_data(targets), extract_numerical_data(p90_forecast),
+        0.9)
+print("Normalised quantile losses: P50={}, P90={}".format(p50_loss.mean(), p90_loss.mean()))
+#%%
 
 # # # # Visualizations and extracting interpretable attention weights
 
