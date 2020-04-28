@@ -30,6 +30,9 @@ from scipy.linalg import svd
 from sklearn.metrics import mean_squared_error
 
 # %%
+tic0 = time.time()
+
+# %%
 # Helper functions to get populations and state identifiers
 def get_population(region):
     return populations[populations['state'] == region]['population'].values[0]
@@ -356,42 +359,61 @@ def determine_extrapolate(daysofdata,state_start_day,num_days):
 
 # %%
 #-- Create function to be parallelized (to be performed on each core)
-def par_fun(args):
-    states_in_core, main_df, mobility_df, coreInd, const = args
+def par_fun(states_in_core, main_df, mobility_df, coreInd, const, ErrFlag):#args):
+    #states_in_core, main_df, mobility_df, coreInd, const = args
     cube = np.zeros((100+1,const['num_days'],len(states_in_core)))
     for ind, state in enumerate(states_in_core):
-        #try:
-        daysofdata = const['state_to_daysofdata'][state]
-        state_start_day = determine_state_start_day(state,const['global_day0'], const['state_to_day0'])
-        extrap = determine_extrapolate(daysofdata,state_start_day,const['num_days'])
-        
-        # if counter < 3: # NEED TO REMOVE THIS EVENTUALLY
-        data = select_region(main_df, state)#[:boundary]
-        boundary = len(data)
-        mobility_data = select_region(mobility_df, state,mobility = True)
-        tic = time.time()
-        res = least_squares(fit_leastsq_z, const['guesses'], args=(data,mobility_data), bounds=np.transpose(np.array(const['ranges'])),jac = '2-point')
-        #plot_with_errors_sample_z(res, const['params'], const['initial_conditions'], main_df, mobility_df, state, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True);
-        all_s, _, _, _ = plot_with_errors_sample_z(res, const['params'], const['initial_conditions'], main_df, mobility_df, state, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
-        toc = time.time()
-        #except:
-        #    print('core index: ', coreInd)
-        #    print(state)
-        #    print('Exception went off')
-        
-        cube[0,:,ind] = const['state_to_fips'][state]
-        cube[1:,state_start_day:,ind] = all_s[:,:,5]
-        print('____%s (%d of %d)____'%(state, ind, len(states_in_core)))
-        print('    core index: %d'%coreInd)
-        print('    sec elapsed: '%(toc-tic))
-        #sys.stdout.flush()
-
+        try:
+            if ErrFlag.is_set():
+                print('Detected ErrFlag; exiting loop')
+                break
+            daysofdata = const['state_to_daysofdata'][state]
+            state_start_day = determine_state_start_day(state,const['global_day0'], const['state_to_day0'])
+            extrap = determine_extrapolate(daysofdata,state_start_day,const['num_days'])
+            
+            data = select_region(main_df, state)#[:boundary]
+            boundary = len(data)
+            mobility_data = select_region(mobility_df, state,mobility = True)
+            tic = time.time()
+            res = least_squares(fit_leastsq_z, const['guesses'], args=(data,mobility_data), bounds=np.transpose(np.array(const['ranges'])),jac = '2-point')
+            #plot_with_errors_sample_z(res, const['params'], const['initial_conditions'], main_df, mobility_df, state, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True);
+            all_s, _, _, _ = plot_with_errors_sample_z(res, const['params'], const['initial_conditions'], main_df, mobility_df, state, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
+            toc = time.time()
+            cube[0,:,ind] = const['state_to_fips'][state]
+            cube[1:,state_start_day:,ind] = all_s[:,:,5]
+            print('____%s (state %d of %d)____'%(state, ind+1, len(states_in_core)))
+            print('    core: %d'%coreInd)
+            print('    time: %f'%(toc-tic))
+            sys.stdout.flush()
+        except TypeError as TE:
+            print('############################')
+            print('Handled Exception Occurred:')
+            print('core index: ', coreInd)
+            print('   state with error: %s'%state)
+            print(TE)
+            print('############################')
+        except:
+            print('############################')
+            print('UNHANDLED Exception Occurred:')
+            print('core index: ', coreInd)
+            print('   state with error: %s'%state)
+            print('Setting ErrFlag for other workers')
+            print('############################')
+            raise
+    # do non-risky stuff outside of try context
+    print('############################')
+    print('### Core %2d has finished ###'%coreInd)
+    print('############################')
     return cube
 
 def apply_by_mp(func, workers, args):
-    pool = multiprocessing.Pool(processes=workers)
-    result = pool.map(func, args)
-    pool.close()
+    # pool = multiprocessing.Pool(processes=workers)
+    # result = pool.map(func, args)
+    # pool.close()
+    with multiprocessing.Pool(processes=workers) as pool:
+        result = pool.starmap(func, args)
+    # Recombine result matrices
+    result = np.dstack(result)
     return result
     
     
@@ -574,7 +596,7 @@ if __name__ == '__main__':
     # %% 
     # Prepare for parallelization
     # Number of cores to use
-    workers = 8
+    workers = 6
     if workers > multiprocessing.cpu_count():
         raise('More workers requested than cores: workers=%d, cores=%d'%(workers, multiprocessing.cpu_count()))
 
@@ -615,9 +637,17 @@ if __name__ == '__main__':
 
 
     # %% 
-    # Call to run in parallel
-    args = [(states_for_cores[i], main_dfs[i], mobility_dfs[i], i, const) for i in range(workers)]
+    #-- Call to run in parallel
+    # Flag to manage exceptions
+    ErrFlag = multiprocessing.Manager().Event()
+    # Format arguments
+    args = [(states_for_cores[i], main_dfs[i], mobility_dfs[i], i, const, ErrFlag) for i in range(workers)]
+    # Call parallelizer function
     res = apply_by_mp(par_fun,workers,args)
+    print('--------Total Time: %f----------'%(time.time()-tic0))
+    print(res.shape)
+    np.save('Dan\\resCube', res)
+    print(res[:2,3,10])
 
 
 # savedict = {'cube':cube}
