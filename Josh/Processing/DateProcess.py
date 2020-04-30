@@ -1,5 +1,4 @@
 def DateProcess(Date):
-    def DateProcess(Date):
     from datetime import date
     dates=np.array(Date.split('-')).astype(int)
     return (date(dates[0],dates[1],dates[2])-date(2020,1,1)).days
