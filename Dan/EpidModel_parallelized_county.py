@@ -152,9 +152,13 @@ def q(t, N, shift,mobility_data,offset):
         
     Q = N*(1-moving-shift)
     #Q = N*(1-moving)
-    if np.round(t) >= len(Q):
-        if len(Q>0):
-            return Q[-1]
+    try:
+        if np.round(t) >= len(Q):
+            if len(Q>0):
+                return Q[-1]
+    except TypeError:
+        print('ERROR in q(): Q was a scalar you poop')
+        return Q
 
     return Q[int(np.round(t))]
 
@@ -443,24 +447,24 @@ if __name__ == '__main__':
 
     #-- Define control parameters
     # Filename for saved .npy and .mat files (can include path)
-    sv_flnm_np  = 'Dan\\train_til_4_22.npy'
-    sv_flnm_mat = 'Dan\\train_til_4_22.mat'
+    sv_flnm_np  = 'Dan\\train_til_4_24.npy'
+    sv_flnm_mat = 'Dan\\train_til_4_24.mat'
 
     # Number of cores to use (logical cores, not physical cores)
-    workers = 9
+    workers = 8
     # Threshold of deaths below which a STATE will not be trained on
         # Filters which STATES are looped over in optimization/minimization loop
-    D_THRES = 30
+    D_THRES = 50
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
         # OR: leave as None to train until the latest data for which there is data
-    train_til = '2020 04 22'
+    train_til = '2020 04 24'
     # Minimum deaths considered in training
         # Sets the first DAY which will be calculated as part of the optimization
         # by only including days with more than this many deaths. THIS IS DIFFERENT than 
         # D_THRES. D_THRES selects which states are trained on and train_Dfrom selects 
         # which DAYS are used for the optimization
-    train_Dfrom = 0
+    train_Dfrom = D_THRES
 
 
     # %%
