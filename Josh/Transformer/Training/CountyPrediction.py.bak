@@ -1,0 +1,51 @@
+#%%
+import pandas as pd
+import os
+import datetime
+import json
+import numpy as np
+import git
+import tensorflow as tf
+repo=git.Repo('.', search_parent_directories=True)
+cwd=repo.working_dir
+os.chdir(cwd)
+import sys 
+sys.path.append('Josh/Transformer/tft')
+sys.path.append('Josh/Transformer/Training')
+from libs.tft_model import TemporalFusionTransformer
+from libs import utils
+from DataFormatter import model_params, train, valid, model_folder, df, data_formatter
+
+tf.reset_default_graph()
+with tf.Graph().as_default(), tf.Session() as sess:
+
+    tf.keras.backend.set_session(sess)
+    
+    # Create a model with same parameters as we trained with & load weights
+    model = TemporalFusionTransformer(model_params)
+    model.load(model_folder)
+    
+    # Make forecasts
+    output_map = model.predict(train, return_targets=True)
+
+    targets = data_formatter.format_predictions(output_map["targets"])
+
+    # Format predictions
+    p50_forecast = data_formatter.format_predictions(output_map["p50"])
+    p90_forecast = data_formatter.format_predictions(output_map["p90"])
+
+    def extract_numerical_data(data):
+        """Strips out forecast time and identifier columns."""
+        return data[[
+          col for col in data.columns
+          if col not in {"forecast_time", "identifier"}
+        ]]
+
+    # Compute quantile losses using their functionality, but could easily be changed to pinball
+    p50_loss = utils.numpy_normalised_quantile_loss(
+        extract_numerical_data(targets), extract_numerical_data(p50_forecast),
+        0.5)
+    p90_loss = utils.numpy_normalised_quantile_loss(
+        extract_numerical_data(targets), extract_numerical_data(p90_forecast),
+        0.9)
+print("Normalised quantile losses: P50={}, P90={}".format(p50_loss.mean(), p90_loss.mean()))
