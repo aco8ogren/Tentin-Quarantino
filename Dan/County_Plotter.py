@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np 
 import git 
-import matplotlib.pyplot as plt
 import os
 import sys 
 import bokeh.io
@@ -11,7 +10,7 @@ import bokeh.models
 import bokeh.plotting as bkp
 from bokeh.models import Span
 import holoviews as hv
-
+from pathlib import Path
 
 #-- Setup paths
 # Get parent directory using git
@@ -32,27 +31,65 @@ hv.extension('bokeh')
 
 #-- Control parameters
 # Top N counties to plot with the most deaths
-plotN = 10 
-# Control flags (should match those used in creating submission file)
+plotN = 20
+# Data Manipulation flags (should match those used in creating submission file)
 isAllocCounties = True          # Flag to distribue state deaths amongst counties
-isComputeDaily = False           # Flag to translate cummulative data to daily counts
+isComputeDaily = True           # Flag to translate cummulative data to daily counts
+#- Plot-type control flags
+isStateWide = False          # Flag to plot state-wise data (will use nyt_states file for true_df)
+                            #   The raw cube won't be affected so make sure it is also state-wise data
+                            #   AND cumulative since there is only cumulative nyt_us_states data
+isCumul     = False          # Flag to denote that the plot should be cumulative, not daily deaths
+                            # ** Only affects county-level data since state-wide is implicitly cumulative
+                            #   This sets which county-wide nyt file is used and sets the plot y-axis label
 # Key days (should match those used in creating the cube)
 global_dayzero = pd.to_datetime('2020 Jan 21')
 # Day until which model was trained (train_til in epid model)
     # Leave as None to not display a boundary
-boundary = '2020 April 24'
+boundary = '2020 April 23'
+# Day to use for allocating to counties
+    # Leave as None to use most recent date
+    # OR use '2020-04-23' format to allocate based on proportions from that day
+alloc_day = '2020-04-23'
+# Flag to choose whether to save .svg of figures
+is_saveSVG = False
+# Filename (including path) for saving .svg files when is_saveSVG=True
+    # county, state, and fips will be appended to the name to differentiate plots
+svg_flm = 'Dan/MidtermFigs/CountyWideDaily2/'
 
 
 #-- Files to utilize
 # Filename for cube of model data
     # should be (row=sample, col=day, pane=state) with state FIPS as beef in row1
-mat_model   = 'Dan/train_til_4_24.mat'#'Dan\\train_til_today.csv'
-# Reference file to treat as "true" death counts (also used for allocating deaths when isAllocCounties=True)
-csv_true    = 'data\\us\\covid\\nyt_us_counties_daily.csv'
+mat_model   = 'Alex/wkspc.mat'#'Dan\\train_til_today.csv'
+# Reference file to treat as "true" death counts 
+csv_true    = 'data\\us\\covid\\nyt_us_counties_daily.csv'  # daily county counts (also used for allocating deaths when req.)
+csv_ST_true = 'data\\us\\covid\\nyt_us_states.csv'          # this is cumulative ONLY; no _daily version exists
+csv_CT_cumul_true = 'data\\us\\covid\\nyt_us_counties.csv'  # county cumulative counts
 
 
 #-- Read and format true data to have correct columns
-true_df = pd.read_csv(csv_true)
+# Read correct file for requested setup
+if isStateWide:
+    # Plotting state-wide so use nyt state file (implicitly cumulative)
+    true_df = pd.read_csv(csv_ST_true)
+else:
+    if isCumul:
+        # plotting cumulative county-wide so pull this file
+        true_df = pd.read_csv(csv_CT_cumul_true)
+    else:
+        # plotting daily county-wide so pull this file
+        true_df = pd.read_csv(csv_true)
+# The nyt_us_counties.csv file is SUPER FLAWED so we need to fix this:
+    # - has some empty values in the fips column cousing prob. with .astype(int) 
+    # - Straight up doesn't have fips entry for NYC so need to hardcode its fips
+if (not isStateWide) and isCumul:
+    # Reading in problematic file. 
+    # Replace empty value on NYC with 36061
+    true_df.loc[true_df.county=='New York City', 'fips'] = 36061
+    # Remove rows with nans from the df (these are the counties we don't care about)
+    true_df = true_df[true_df['fips'].notna()]
+# Reformat some columns
 true_df['fips'] = true_df['fips'].astype(int)
 true_df['id'] = true_df['date'] + '-' + true_df['fips'].astype(str)
 
@@ -64,7 +101,7 @@ model_cube = cf.read_cube(mat_model)
 if isComputeDaily:
     model_cube = cf.calc_daily(model_cube)
 if isAllocCounties:
-    model_cube = cf.alloc_counties(model_cube, csv_true)
+    model_cube = cf.alloc_counties(model_cube, csv_true, alloc_day=alloc_day)
 
 
 #-- Calculate quantiles for all modeled counties
@@ -97,6 +134,13 @@ true_df = true_df[true_df.fips.isin(model_fips)]
 # Add column of dates in datetime format
 true_df['dateDT'] = pd.to_datetime(true_df['date'].values)
 
+#-- Create directory for output .svg files if necessary
+if is_saveSVG:
+    # Append sample filename just to get proper path
+    tmp_flm = '%sstate_county_fips.svg'%svg_flm
+    # Create directory if necessary
+    Path(tmp_flm).parent.mkdir(parents=True, exist_ok=True)
+
 for ind, cnty in enumerate(model_fips):
     # Pull just the relevant county
     cnty_true_df = true_df[true_df['fips'] == cnty]
@@ -111,12 +155,29 @@ for ind, cnty in enumerate(model_fips):
     t_true = cnty_true_df['rel_date'].values
     t_model = np.arange(cnty_model.shape[1])
 
+    # Format title for state vs. county plots
+    if isStateWide:
+        # Don't add county item since it's not pertinent
+        ptit = 'SEIIRD+Q Model: %s (%d)'%(cnty_true_df['state'].iloc[0], cnty)
+    else:
+        # Include county in title
+        ptit = 'SEIIRD+Q Model: %s, %s (%d)'%(cnty_true_df['county'].iloc[0],cnty_true_df['state'].iloc[0], cnty)
+
+    # Format y-axis label for cumulative vs. daily plots
+    if isCumul or isStateWide:
+        # NOTE: statewide is implicitly cumulative
+        # Set y-axis label to show cumulative counts
+        ylab = '# deaths total'
+    else:
+        # Set y-axis label to show deaths/day
+        ylab = '# deaths/day'
+
     # Create figure for the plot
     p = bkp.figure( plot_width=600,
                     plot_height=400,
-                    title = 'SEIIRD+Q Model: %s, %s (%d)'%(cnty_true_df['county'].iloc[0],cnty_true_df['state'].iloc[0], cnty) ,
+                    title = ptit,
                     x_axis_label = 't (days since %s)'%global_dayzero.date(),
-                    y_axis_label = '# deaths/day')
+                    y_axis_label = ylab)
 
     # CONSIDER FLIPPING THE ORDER OF QUANTILES TO SEE IF IT FIXES THE PLOTTING
     # Plot uncertainty regions
@@ -137,3 +198,13 @@ for ind, cnty in enumerate(model_fips):
 
     # Show plot
     bokeh.io.show(p)
+
+    # Save output figures if desired
+    if is_saveSVG:
+        p.output_backend = "svg"
+        # Format filename for state vs. county plots
+        if isStateWide:
+            suffix = ('%s_%d.svg'%(cnty_true_df['state'].iloc[0],cnty)).replace(' ','')
+        else:
+            suffix = ('%s_%s_%d.svg'%(cnty_true_df['state'].iloc[0],cnty_true_df['county'].iloc[0],cnty)).replace(' ','')
+        bokeh.io.export_svgs(p, filename= svg_flm + suffix)
