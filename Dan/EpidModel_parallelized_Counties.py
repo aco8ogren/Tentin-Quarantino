@@ -329,7 +329,9 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, ErrFlag):
     cube = np.zeros((100+1,const['num_days'],len(fips_in_core)))
     for ind, fips in enumerate(fips_in_core):
         try:
-            if ErrFlag.is_set():
+            # Check if ErrFlag is valuable (ie if multiprocessing) THEN check if it's set
+                # "and" is short circuited so ErrFlag.is_set() only gets called when needed
+            if (ErrFlag is not None) and ErrFlag.is_set():
                 print('Detected ErrFlag; exiting loop')
                 break
             
@@ -382,8 +384,9 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, ErrFlag):
                   '   issue on: (%d) - %s - %s\n'%(fips, const['fips_to_county'][fips],const['fips_to_state'][fips]) + \
                   'Setting ErrFlag for other workers\n' + \
                   '############################\n')
-
-            ErrFlag.set()
+            if ErrFlag is not None:
+                # Only set ErrFlag when there are other workers listening
+                ErrFlag.set()
             raise
     # do non-risky stuff outside of try context
     print('############################\n' + \
@@ -410,9 +413,12 @@ if __name__ == '__main__':
 
     #-- Define control parameters
     # Filename for saved .npy and .mat files (can include path)
-    sv_flnm_np  = 'Dan\\county_train_til_4_24.npy'
-    sv_flnm_mat = 'Dan\\county_train_til_4_24.mat'
+    sv_flnm_np  = 'Dan\\county_4_24_from_7_d50.npy'
+    sv_flnm_mat = 'Dan\\county_4_24_from_7_d50.mat'
 
+
+    # Flag to choose whether multiprocessing should be used
+    isMultiProc = True
     # Number of cores to use (logical cores, not physical cores)
     workers = 8
     # Threshold of deaths at and below which a COUNTY will not be trained on
@@ -432,7 +438,7 @@ if __name__ == '__main__':
         # We may be training from day 0, for example, but state_to_day0 is from the first day that we crossed D_THRES
     # NOTE/TODO: Since we are training by county, some counties only just passed D_THRES
         # As such, we almost certainly want to set train_Dfrom < DTHRES so that we have enough days of data for which to train
-    train_Dfrom = D_THRES
+    train_Dfrom = 7
     # Minimum number of days required for a county to be trained on
         # After filtering using train_Dfrom and D_THRES, this makes sure that there
         # are at least min_train_days worth of days to train the model on (for fit_leastsqz)
@@ -639,9 +645,17 @@ if __name__ == '__main__':
     # %% 
     # Prepare for parallelization
     
-    # Check that user hasn't requested more cores than are available
-    if workers > multiprocessing.cpu_count():
-        raise ValueError('More workers requested than cores: workers=%d, cores=%d'%(workers, multiprocessing.cpu_count()))
+    
+
+    if isMultiProc:
+        # Check that user hasn't requested more cores than are available
+        if workers > multiprocessing.cpu_count():
+            raise ValueError('More workers requested than cores: workers=%d, cores=%d'%(workers, multiprocessing.cpu_count()))
+    else:
+        # Set number of workers to 1 since not multiprocessing
+        workers = 1
+
+    print('Using %d cores'%workers)
 
     #-- Split into parallelizable chunks
         # Here I am splitting arbitrarily. Could consider ordering by number of days of data and then splitting s.t. we evenly 
@@ -695,12 +709,21 @@ if __name__ == '__main__':
 
     # %% 
     #-- Call to run in parallel
-    # Flag to manage exceptions
-    ErrFlag = multiprocessing.Manager().Event()
+    if isMultiProc:
+        # Flag to manage exceptions from other cores
+        ErrFlag = multiprocessing.Manager().Event()
+    else:
+        # Set ErrFlag to None since don't want any multiprocessing stuff
+        ErrFlag = None
     # Format arguments
     args = [(fips_for_cores[i], main_dfs[i], mobility_dfs[i], i, const, ErrFlag) for i in range(workers)]
-    # Call parallelizer function
-    res = apply_by_mp(par_fun,workers,args)
+    if isMultiProc:
+        # Call parallelizer function
+        res = apply_by_mp(par_fun,workers,args)
+    else:
+        # Call parfun directly
+        res = par_fun(*args)
+    
     print('--------Total Time: %f----------'%(time.time()-tic0))
     print(res.shape)
     np.save(sv_flnm_np, res)
