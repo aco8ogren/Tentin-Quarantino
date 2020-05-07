@@ -73,7 +73,7 @@ def calc_daily(data):
 
     return data
 
-def alloc_counties(data, county_ref_fln):
+def alloc_counties(data, county_ref_fln, alloc_day=None):
     """
     # Function to allocate state-wide deaths amongst counties
     # 
@@ -81,6 +81,13 @@ def alloc_counties(data, county_ref_fln):
     #   - data      cube with daily death counts
     #                 format for input cube:
     #                 row=sample, col=date, pane=county
+    #
+    #   - county_ref_fln 
+    #               filename of reference file to use for allocation
+    #   
+    #   - alloc_day Day to use to get proportions for allocations
+    #               if None: uses most recent value in ref file
+    #               else: use the date provide [format='YYYY-MM-DD']
     #
     # Output:
     #   - data      a numpy cube with daily deaths by county
@@ -111,8 +118,11 @@ def alloc_counties(data, county_ref_fln):
     ##-- Load the reference county file and extract pertinent data
     ref_data = pd.read_csv(county_ref_fln)
 
-    # most recent date in set
-    lst_date = max(np.array(ref_data['date']))
+    if alloc_day is not None:
+        lst_date = alloc_day
+    else:
+        # most recent date in set
+        lst_date = max(np.array(ref_data['date']))
     # remove all data not from this date
     ref_data = ref_data[ref_data['date'] == lst_date]
     
