@@ -26,16 +26,17 @@ Data+=p0
 DistLine+=p0
 plt.figure(1)
 plt.plot(Data[:,0],Data[:,1],'k')
-plt.plot([p0[0],p1[0]],[p0[1],p1[1]],'b')
-plt.plot(DistLine[:,0],DistLine[:,1],'r')
+# plt.plot([p0[0],p1[0]],[p0[1],p1[1]],'b')
+# plt.plot(DistLine[:,0],DistLine[:,1],'r')
 plt.plot(Data[OptInd,0],Data[OptInd,1],'ro',label='Optimal K = %i'%Data[OptInd,0])
 plt.legend()
 plt.title('K-Means Clustering:\nMean Square Distance To Cluster Center vs. K')
 plt.xlabel('K')
 plt.ylabel('Square Distance')
 # plt.show()
-plt.savefig('Josh/Clustering/ElbowPlot.svg')
-plt.savefig('Josh/Clustering/ElbowPlot.png')
+# plt.gca().set_aspect('equal')
+plt.savefig('Josh/Clustering/ElbowPlotNoLines.svg')
+# plt.savefig('Josh/Clustering/ElbowPlot.png')
 
 
 
