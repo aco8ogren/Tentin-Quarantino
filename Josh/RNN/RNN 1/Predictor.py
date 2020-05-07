@@ -10,20 +10,29 @@ from keras.utils import np_utils
 import pickle
 import sys
 import git
+import pandas as pd 
+
+repo=git.Repo('.', search_parent_directories=True)
+cwd=repo.working_dir
+os.chdir(cwd)
+
 sys.path.append('Josh/Processing/')
 from nyt_us_counties_Import2 import us_counties_Data2Dict
 from matplotlib import pyplot as plt
 
 # %% Change Directory to git root folder: Tentin-Quarantino
-repo=git.Repo('.', search_parent_directories=True)
-cwd=repo.working_dir
-os.chdir(cwd)
 
 #%%
 TrainingVectorLength=10     #number of days to use for RNN input vector
 DataDict=us_counties_Data2Dict(RemoveEmptyFips=True)
-
-
+DataDict['long']=np.array([val[0] for val in DataDict['coords']])
+DataDict['lat']=np.array([val[1] for val in DataDict['coords']])
+DataDict['day']=DataDict['day'][:,0]
+del DataDict['coords']
+dataDf=pd.DataFrame(DataDict)
+dataDf=dataDf[dataDf.day<100]
+DataDict=dataDf.to_dict('list')
+DataDict={key: np.array(DataDict[key]) for key in DataDict.keys()}
 
 Fips=np.unique(DataDict['fips'])
 N=len(DataDict['deaths'])
@@ -109,8 +118,7 @@ plt.title('New York Deaths')
 plt.xlabel('Days since January 1st')
 plt.ylabel('Deaths since January 1st')
 plt.legend(('True','Prediction'))
-plt.show()  
-
+plt.savefig('Josh\RNN\RNN 1/NyPredictions.svg')
 #%%
 
 
