@@ -1,9 +1,0 @@
-*.DS_Store
-*.ipynb_checkpoints/
-*.vscode
-Environments/
-Tftenv/
-.vscode/settings.json
-seirqEnv/
-.vscode/
-.gitignore
