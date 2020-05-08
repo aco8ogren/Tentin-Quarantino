@@ -29,6 +29,8 @@ from scipy.linalg import svd
 
 from sklearn.metrics import mean_squared_error
 
+import os
+
 # %%
 tic0 = time.time()
 
@@ -215,11 +217,11 @@ def fit_leastsq_z(params, data, mobility_data):
     Idata = (data['cases'].values)
     s = model_z(params, data, mobility_data)
 
-    S = s[:,0]
-    E = s[:,1]
-    I_A = s[:,2]
+    # S = s[:,0]
+    # E = s[:,1]
+    # I_A = s[:,2]
     I_S = s[:,3]
-    R = s[:,4]
+    # R = s[:,4]
     D = s[:,5]
     
     death_weight = 10
@@ -271,42 +273,47 @@ def plot_with_errors_sample_z(res, df, mobility_df, region, d_thres, const, extr
     R = s[:,4]
     D = s[:,5]
 
-    t = np.arange(0, len(data))
-    tp = np.arange(0, int(np.round(len(data)*extrapolate)))
+    #-- Perform bokeh stuff when not multiprocessing (so that plots are actually shown)
+    if (not const['isMultiProc']) and const['isPlotBokeh']:
+        t = np.arange(0, len(data))
+        tp = np.arange(0, int(np.round(len(data)*extrapolate)))
 
-    ptit = '%s, %s - (%d) - SEIIRD+Q Model'%(const['fips_to_county'][region], const['fips_to_state'][region], region)
-    p = bkp.figure(plot_width=600,
-                              plot_height=400,
-                             title = ptit,
-                             x_axis_label = 't (days)',
-                             y_axis_label = '# people')
+        ptit = '%s, %s - (%d) - SEIIRD+Q Model'%(const['fips_to_county'][region], const['fips_to_state'][region], region)
+        p = bkp.figure(plot_width=600,
+                                plot_height=400,
+                                title = ptit,
+                                x_axis_label = 't (days)',
+                                y_axis_label = '# people')
 
     quantiles = [10, 20, 30, 40]
     for quantile in quantiles:
         s1 = np.percentile(all_s, quantile, axis=0)
         s2 = np.percentile(all_s, 100-quantile, axis=0)
+        if (not const['isMultiProc']) and const['isPlotBokeh']:
+            if plot_asymptomatic_infectious:
+                p.varea(x=tp, y1=s1[:, 2], y2=s2[:, 2], color='red', fill_alpha=quantile/100) # Asymptomatic infected
+            if plot_symptomatic_infectious:
+                p.varea(x=tp, y1=s1[:, 3], y2=s2[:, 3], color='purple', fill_alpha=quantile/100) # Symptomatic infected
+            p.varea(x=tp, y1=s1[:, 5], y2=s2[:, 5], color='black', fill_alpha=quantile/100) # deaths
+    
+    if (not const['isMultiProc']) and const['isPlotBokeh']:
         if plot_asymptomatic_infectious:
-            p.varea(x=tp, y1=s1[:, 2], y2=s2[:, 2], color='red', fill_alpha=quantile/100) # Asymptomatic infected
+            p.line(tp, I_A, color = 'red', line_width = 1, legend_label = 'Asymptomatic infected')
         if plot_symptomatic_infectious:
-            p.varea(x=tp, y1=s1[:, 3], y2=s2[:, 3], color='purple', fill_alpha=quantile/100) # Symptomatic infected
-        p.varea(x=tp, y1=s1[:, 5], y2=s2[:, 5], color='black', fill_alpha=quantile/100) # deaths
+            p.line(tp, I_S , color = 'purple', line_width = 1, legend_label = 'Symptomatic infected')
+        p.line(tp, D, color = 'black', line_width = 1, legend_label = 'Deceased')
     
-    if plot_asymptomatic_infectious:
-        p.line(tp, I_A, color = 'red', line_width = 1, legend_label = 'Asymptomatic infected')
-    if plot_symptomatic_infectious:
-        p.line(tp, I_S , color = 'purple', line_width = 1, legend_label = 'Symptomatic infected')
-    p.line(tp, D, color = 'black', line_width = 1, legend_label = 'Deceased')
-    
-    # death
-    p.circle(t, data['deaths'], color ='black')
-    # quarantined
-    if plot_symptomatic_infectious:
-        p.circle(t, data['cases'], color ='purple')
-    if boundary is not None:
-        vline = Span(location=boundary, dimension='height', line_color='black', line_width=3)
-        p.renderers.extend([vline])
-    p.legend.location = 'top_left'
-    # bokeh.io.show(p)
+    if (not const['isMultiProc']) and const['isPlotBokeh']:
+        # death
+        p.circle(t, data['deaths'], color ='black')
+        # quarantined
+        if plot_symptomatic_infectious:
+            p.circle(t, data['cases'], color ='purple')
+        if boundary is not None:
+            vline = Span(location=boundary, dimension='height', line_color='black', line_width=3)
+            p.renderers.extend([vline])
+        p.legend.location = 'top_left'
+        bokeh.io.show(p)
     D_quantiles = np.array([s1[:,5],s2[:,5]])
     D
 
@@ -407,18 +414,17 @@ def apply_by_mp(func, workers, args):
     
 # %%
 if __name__ == '__main__':
-    # bokeh.io.output_notebook()
-    hv.extension('bokeh')
-
-
     #-- Define control parameters
+    # Flag to choose whether to save the results or not
+    isSaveRes = False
     # Filename for saved .npy and .mat files (can include path)
-    sv_flnm_np  = 'Dan\\NYC_Jeff_Only.npy'
-    sv_flnm_mat = 'Dan\\NYC_Jeff_Only.mat'
+        # Make sure the directory structure is present before calling
+    sv_flnm_np  = 'Dan\\PracticeOutputs\\NYC_Jeff_Only.npy'
+    sv_flnm_mat = 'Dan\\PracticeOutputs\\NYC_Jeff_Only.mat'
 
 
     # Flag to choose whether multiprocessing should be used
-    isMultiProc = True
+    isMultiProc = False
     # Number of cores to use (logical cores, not physical cores)
     workers = 8
     # Threshold of deaths at and below which a COUNTY will not be trained on
@@ -444,19 +450,39 @@ if __name__ == '__main__':
 
     #- Sub-select counties to train on
     # Flag to choose whether to sub-select
-    isSubSelect = False
+    isSubSelect = True
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
-    just_train_these_fips = [36061, 1073]
+    just_train_these_fips = [36061, 1073] #
+
+
+    #-- When not multiprocessing, enable bokeh plotting (since won't cause issue)
+    # Flag to stating whether to plot. This only matters when not multiprocessing (isMultiProc=False)
+        # When isMultiProc=True, bokeh will cause errors so we ignore this flag
+    isPlotBokeh     = True      
+    # Turn on plotting if available
+    if (not isMultiProc) and isPlotBokeh:
+        bokeh.io.output_notebook()
+        hv.extension('bokeh')
 
 
     # %%
     #  Let's load the data from the relevant folder. If this data doesn't exist for you, you'll need to run the `processing/raw_data_processing/daily_refresh.sh` script (which may require `pip install us`).
-    import git
+    # import git
 
-    repo = git.Repo("./", search_parent_directories=True)
-    homedir = repo.working_dir
-    # homedir = "C:/Users/alex/OneDrive - California Institute of Technology/Documents/GitHub/Tentin-Quarantino"
+    # repo = git.Repo("./", search_parent_directories=True)
+    # homedir = repo.working_dir
+    # # homedir = "C:/Users/alex/OneDrive - California Institute of Technology/Documents/GitHub/Tentin-Quarantino"
+    # datadir = f"{homedir}/data/us/"
+
+    # os.chdir(homedir)
+
+    HomeDIR='Tentin-Quarantino'
+    wd=os.getcwd()
+    DIR=wd[:wd.find(HomeDIR)+len(HomeDIR)]
+    os.chdir(DIR)
+
+    homedir = DIR
     datadir = f"{homedir}/data/us/"
 
     # %%
@@ -487,6 +513,9 @@ if __name__ == '__main__':
     df['date_processed'] = pd.to_datetime(df['date'].values)
     df['date_timestamp'] = pd.to_datetime(df['date'].values)
 
+    #NOTE/TODO: I'M PRETTY SURE WE NEED TO SET THIS TO GLOBAL_DAY_ZERO, NOT JUST THE MIN OF COUNTY VALUES
+        # This has happened to work before because we usually have the one county in washington
+        # that has data on 1/21 but once we remove counties, it causes issue
     day_zero = df['date_processed'].min()
     print('---- Day zero is ',day_zero)
     df['date_processed'] = (df['date_processed'] - day_zero) / np.timedelta64(1, 'D')
@@ -502,7 +531,7 @@ if __name__ == '__main__':
     if train_til is not None:
         # User provided a boundary date for training; translate to absolute time w.r.t global_dayzero
         train_til = pd.to_datetime(train_til)
-        print('Only training until: ', train_til)
+        print('---- Only training until: ', train_til)
         train_til = int((train_til-global_dayzero)/np.timedelta64(1,'D'))
     # NOTE: commented out else to see if working with None directly in par_func works
     # else:
@@ -527,8 +556,8 @@ if __name__ == '__main__':
 
     # %%
     #  Just checking to make sure the data is here...
-    print(df)
-    print(' ')
+    # print(df)
+    # print(' ')
 
     # %% 
     # Our main control list (equivalent to list_of_states) is based off the fips codes
@@ -600,11 +629,11 @@ if __name__ == '__main__':
 
     # Get series with fips and county associated to each other
         # (as a pandas series)
-    fips_to_county = df[df.fips.isin(list_of_fips_to_train)].drop_duplicates('fips')[['fips','county']].set_index('fips').squeeze()
+    fips_to_county = pd.Series(df[df.fips.isin(list_of_fips_to_train)].drop_duplicates('fips')[['fips','county']].set_index('fips').to_dict()['county'])
     
     # Get series with fips and state associated to each other
         # (as a pandas series)
-    fips_to_state = df[df.fips.isin(list_of_fips_to_train)].drop_duplicates('fips')[['fips','state']].set_index('fips').squeeze()
+    fips_to_state = pd.Series(df[df.fips.isin(list_of_fips_to_train)].drop_duplicates('fips')[['fips','state']].set_index('fips').to_dict()['state'])
 
     # Sort the fips to train by number of deaths
     print_order = fips_to_maxdeaths[list_of_fips_to_train].sort_values(ascending=False)
@@ -657,7 +686,9 @@ if __name__ == '__main__':
     #-- Simplify arguments for function by placing them in a dict
     param_ranges = [(1.0, 3.0), (0.1, 0.5), (0.01, .9), (0.0001, 0.9), (0.0001, 0.9), (0.001, 0.1), (0.05, .7)] # shift can go 0 to 100 for alex method
     initial_ranges = [(1.0e-7, 0.05), (1.0e-7, 0.05), (1.0e-7, 0.05), (1.0e-7, 0.01)]
+    # beta, alpha, sigma, ra, rs, delta, shift
     params = [1.8, 0.35, 0.1, 0.15, 0.34, 0.015, .5]
+    # OR? conditions: E, IA, IS, R
     initial_conditions = [4e-6, 0.005, 0.005, 0.005]
 
     guesses = params + initial_conditions
@@ -678,6 +709,8 @@ if __name__ == '__main__':
     const['train_til'] = train_til
     const['train_Dfrom'] = train_Dfrom
     const['min_train_days'] = min_train_days
+    const['isMultiProc'] = isMultiProc
+    const['isPlotBokeh'] = isPlotBokeh
 
 
     # %% 
@@ -699,9 +732,11 @@ if __name__ == '__main__':
     
     print('--------Total Time: %f----------'%(time.time()-tic0))
     print(res.shape)
-    np.save(sv_flnm_np, res)
-    savedict = {'cube': res}
-    savemat(sv_flnm_mat, savedict)
+    if isSaveRes:
+        # Save results only when requested to do so
+        np.save(sv_flnm_np, res)
+        savedict = {'cube': res}
+        savemat(sv_flnm_mat, savedict)
     print(res[:2,100,:10])
 
 
