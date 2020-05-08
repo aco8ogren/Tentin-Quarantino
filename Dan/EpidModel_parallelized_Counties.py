@@ -436,7 +436,9 @@ if __name__ == '__main__':
     isSubSelect = True
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
-    just_train_these_fips = [36061, 1073] #
+    just_train_these_fips = [36061, 1073, 56035, 6037] #
+
+
 
 
     #-- When not multiprocessing, enable bokeh plotting (since won't cause issue)
@@ -494,7 +496,7 @@ if __name__ == '__main__':
     #-- Format date stuff
     # We want to count days as integers from some starting point.
     df['date_processed'] = pd.to_datetime(df['date'].values)
-    df['date_timestamp'] = pd.to_datetime(df['date'].values)
+    df['date_datetime'] = pd.to_datetime(df['date'].values)
 
     # %%
     #-- Define key dates
@@ -507,24 +509,47 @@ if __name__ == '__main__':
         # that has data on 1/21 but once we remove counties, it causes issue
     # day_zero = df['date_processed'].min()
     # print('---- Day zero is ',day_zero)
-    print('---- Day zero is ',global_day_zero)
+    print('---- Day zero is ',global_dayzero)
     # df['date_processed'] = (df['date_processed'] - day_zero) / np.timedelta64(1, 'D')
-    df['date_processed'] = (df['date_processed'] - global_day_zero) / np.timedelta64(1, 'D')
+    df['date_processed'] = (df['date_processed'] - global_dayzero) / np.timedelta64(1, 'D')
 
-
-    #-- Set day until which to train
+        #-- Set day until which to train
     if train_til is not None:
         # User provided a boundary date for training; translate to absolute time w.r.t global_dayzero
         train_til = pd.to_datetime(train_til)
         print('---- Only training until: ', train_til)
-        train_til = int((train_til-global_dayzero)/np.timedelta64(1,'D'))
     # NOTE: commented out else to see if working with None directly in par_func works
     # else:
     #     # User did not provide a boundary; set boundary as last day in dataset
     #     train_til = df.date_processed.max()
 
+    # %% Plot the raw data for the subselection: just_train_these_fips
+    if (not isMultiProc) and isPlotBokeh:
+        for fips in just_train_these_fips:
+            county_name = df[df['fips']==fips]['county'].values[0]
+            state_name = df[df['fips']==fips]['state'].values[0]
+            ptit = '%s, %s - (%d) - RAW DATA'%(county_name, state_name, fips)
+            p = bkp.figure(plot_width=600,
+                        plot_height=400,
+                        title=ptit,
+                        x_axis_label='date',
+                        y_axis_label='# people',
+                        x_axis_type = 'datetime')
+            # death
+            p.circle(df[df['fips']==fips]['date_datetime'], df[df['fips']==fips]['deaths'], color ='black')
+            # quarantined
+            # if plot_symptomatic_infectious:
+            #     p.circle(t, data['cases'], color ='purple')
+            if train_til is not None:
+                vline = Span(location=train_til, dimension='height', line_color='black', line_width=3)
+                p.renderers.extend([vline])
+            p.legend.location = 'top_left'
+            bokeh.io.show(p)
+    # %%
     #-- Remove days beyond our training limit day
-    df = df[df['date_processed'] < train_til]
+    if train_til is not None:
+        train_til = int((train_til-global_dayzero)/np.timedelta64(1,'D'))
+        df = df[df['date_processed'] < train_til]
 
 
     # %%
@@ -575,7 +600,8 @@ if __name__ == '__main__':
     for col in list(mobility_df.columns):
         col_dt = pd.to_datetime(col,errors = 'coerce')
         if not (isinstance(col_dt,pd._libs.tslibs.nattype.NaTType)): # check if col_dt could be converted. NaT means "Not a Timestamp"    
-            date_dict[col] = (col_dt - day_zero) / np.timedelta64(1, 'D')
+            # date_dict[col] = (col_dt - day_zero) / np.timedelta64(1, 'D')
+            date_dict[col] = (col_dt - global_dayzero) / np.timedelta64(1, 'D')
 
     temp_dict = dict()
     temp_dict['admin1'] = 'state'
@@ -587,7 +613,7 @@ if __name__ == '__main__':
     # beta, alpha, sigma, ra, rs, delta, shift
     # param_ranges = [(1.0, 2.0), (0.1, 0.5), (0.1, 0.5), (0.05, 0.5), (0.32, 0.36), (0.005, 0.05), (0.1, .6)]
     # susceptible, exposed, infected_asymptomatic, infected_symptomatic
-    # OR? conditions: E, IA, IS, R
+    # conditions: E, IA, IS, R
     # initial_ranges = [(1.0e-7, 0.001), (1.0e-7, 0.001), (1.0e-7, 0.001), (1.0e-7, 0.001)]
 
     # %%
