@@ -1,5 +1,0 @@
-*.DS_Store
-*.ipynb_checkpoints/
-*.vscode
-.gitignore
-.vscode/settings.json
