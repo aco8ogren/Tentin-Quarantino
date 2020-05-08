@@ -662,7 +662,7 @@ if __name__ == '__main__':
     # %% 
     # Get first day that each county passed D_THRES
         # (as a pandas series)
-    fips_to_dayzero = df[df['deaths'] > train_Dfrom].groupby('fips')['date_timestamp'].min()
+    fips_to_dayzero = df[df['deaths'] > train_Dfrom].groupby('fips')['date_datetime'].min()
 
 
     # %%
