@@ -6,9 +6,11 @@ os.chdir(os.getcwd()[:os.getcwd().find(Direc)+len(Direc)])
 #%%
 import numpy as np
 import pickle
+import pandas as pd
 
 # %% import GeoLoc data
 GeoDat=np.loadtxt('data/us/geolocation/county_centers.csv',dtype=str,delimiter=',',skiprows=1)
+GeoDF=pd.read_csv('data/us/geolocation/county_centers.csv')
 
 # %%
 # Using the last two columns of the GeoData, as these correspond to 2010 population weighted county center long/lat

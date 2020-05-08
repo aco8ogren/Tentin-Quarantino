@@ -1,0 +1,28 @@
+TODO:
+
+Initial conditions for each county - Dan
+
+Clustering - Josh
+	Funtions	
+		Check Cluster
+		Cluster
+	Cluster in parallelized_Counties to create artificial clustered counties
+	Artificial fips start at 1
+
+Mobility: -Dan
+	fill in blanks for existing counties:
+		interpolate
+		extrapolate using last value
+
+	
+Optimize hyperparameters
+Get running on HPC or Alex's computer
+
+LATER
+	Use Mobility date row
+	Preprocess: smoothen
+	
+
+
+
+	
