@@ -399,15 +399,15 @@ def apply_by_mp(func, workers, args):
 if __name__ == '__main__':
     #-- Define control parameters
     # Flag to choose whether to save the results or not
-    isSaveRes = False
+    isSaveRes = True
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
-    sv_flnm_np  = 'Alex\\PracticeOutputs\\test.npy'
-    sv_flnm_mat = 'Alex\\PracticeOutputs\\test.mat'
+    sv_flnm_np  = 'Alex\\PracticeOutputs\\REAL_OUTPUT.npy'
+    sv_flnm_mat = 'Alex\\PracticeOutputs\\REAL_OUTPUT.mat'
 
 
     # Flag to choose whether multiprocessing should be used
-    isMultiProc = False
+    isMultiProc = True
     # Number of cores to use (logical cores, not physical cores)
     workers = 20
     # Threshold of deaths at and below which a COUNTY will not be trained on
@@ -433,7 +433,7 @@ if __name__ == '__main__':
 
     #- Sub-select counties to train on
     # Flag to choose whether to sub-select
-    isSubSelect = True
+    isSubSelect = False
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
     just_train_these_fips = [36061, 1073, 56035, 6037] #
@@ -444,7 +444,7 @@ if __name__ == '__main__':
     #-- When not multiprocessing, enable bokeh plotting (since won't cause issue)
     # Flag to stating whether to plot. This only matters when not multiprocessing (isMultiProc=False)
         # When isMultiProc=True, bokeh will cause errors so we ignore this flag
-    isPlotBokeh     = True      
+    isPlotBokeh     = False      
     # Turn on plotting if available
     if (not isMultiProc) and isPlotBokeh:
         bokeh.io.output_notebook()
@@ -463,12 +463,20 @@ if __name__ == '__main__':
     # os.chdir(homedir)
 
     HomeDIR='Tentin-Quarantino'
-    wd=os.getcwd()
+    wd=os.path.dirname(os.path.realpath(__file__))
     DIR=wd[:wd.find(HomeDIR)+len(HomeDIR)]
     os.chdir(DIR)
 
+
     homedir = DIR
     datadir = f"{homedir}/data/us/"
+
+    # print(os.path.dirname(os.path.realpath(__file__)))
+    # print(wd)
+    # print(HomeDIR)
+    # print(DIR)
+    # print(homedir)
+    # print(datadir)
 
     # %%
     #  Load the US data by county 
