@@ -420,7 +420,7 @@ if __name__ == '__main__':
     # Flag to choose whether multiprocessing should be used
     isMultiProc = True
     # Number of cores to use (logical cores, not physical cores)
-    workers = 8
+    workers = 20
     # Threshold of deaths at and below which a COUNTY will not be trained on
         # Filters which COUNTIES are looped over in optimization/minimization loop
     D_THRES = 50
@@ -468,7 +468,7 @@ if __name__ == '__main__':
 
     # %%
     #-- Do some reformatting of existing entries
-    # # (OPTIONAL) show the NaN entries 
+    # # (OPTIONAL) show the NaN entries
     # df[~df['fips'].notna()]
 
     # Apply 36061 fips to all "New York City" entries
