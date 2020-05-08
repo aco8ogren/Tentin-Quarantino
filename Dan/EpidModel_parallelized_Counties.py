@@ -89,33 +89,22 @@ def get_errors(res, p0):
     perr = np.sqrt(np.diag(pcov))
     return perr
 
-
 # %% [markdown]
-#  ## MODEL 3 of 3: $\mathbf{SEI_A I_S R}$ with empirical quarantine
-# %% [markdown]
-#  The motivation for this model is to add two crucial ingredients: quarantine data and asymptomatic cases. For quarantine analysis, we find an effective population size based on what fraction of the population is moving according to https://citymapper.com/cmi/milan. (Since Milan is the capital of Lombardy, we perform the analysis for that region.) To make the quarantine more realistic, we model a "leaky" quarantine, where the susceptible population is given by the mobility from above plus some offset. To treat asymptomatic cases, we introduce states $I_A$ (asymptomatic) and $I_S$ (symptomatic) according to the following sketch and differential equations:
-# %% [markdown]
+## MODEL 3 of 3: $\mathbf{SEI_A I_S R}$ with empirical quarantine
+# For quarantine analysis, we find an effective population size based on what fraction of the population is moving according to https://citymapper.com/cmi/milan. (Since Milan is the capital of Lombardy, we perform the analysis for that region.) To make the quarantine more realistic, we model a "leaky" quarantine, where the susceptible population is given by the mobility from above plus some offset. To treat asymptomatic cases, we introduce states $I_A$ (asymptomatic) and $I_S$ (symptomatic) according to the following sketch and differential equations:
 #  ![SEIIR + quarantine](images/overview.png)
-# %% [markdown]
-#  Since this is prototyping the model, we manually enter the chart above (raw data is at the link above) and implement it. We also have a testing function $T(t)$ (called `tau(t)` in the code) that allows us to try out different testing strategies for asymptomatic populations. Sorry about the confusing variable names below: parameters are renamed as $\sigma\to$ `alpha`, $s\to$ `sigma`, and $d\to$ `delta`. Not shown in the equations above but included in the diagram is a fixed offset (`offset`) for the leaky quarantine model.
 
 # %%
-# TODO fix data imputation
 def q(t, N, shift,mobility_data,offset):
-    #moving = np.array([57, 54, 52, 51, 49, 47, 46, 45, 44, 43, 39, 37, 34, 23, 19, 13, 10, 7, 6, 5, 5, 7, 6, 5, 4, 4, 3, 3, 4, 4, 3, 3, 3, 3, 2])/100
     if not mobility_data.empty:
-        #column_list = [col for col in list(mobility_data.columns) if is_number(col)]
         moving_list = [mobility_data[col].values for col in list(mobility_data.columns) if is_number(col) and col>=offset]
         moving = np.squeeze(np.array(moving_list))/100 
-        #moving = np.squeeze(np.array(moving_list))*shift/100 # I CHANGED THE MEANING OF SHIFT BY DOING THIS!
         if len(moving_list)==0:
             moving = (100 - 5*(t-offset))/100
     else:
         moving = (100 - 5*(t-offset))/100
-        #moving = (100 - 5*t)*shift/100 # wow. this is terrible and not data-driven at all.
         
     Q = N*(1-moving-shift)
-    #Q = N*(1-moving)
     try:
         if np.round(t) >= len(Q):
             if len(Q>0):
@@ -243,12 +232,6 @@ def LeakyReLU(pred,true,alpha=0):
         else:
             result.append(alpha*(pred[i]-true[i]))
     return np.array(result)
-
-# %% [markdown]
-#  Again, we find some good initial parameters.
-# 
-#  *** We need to find some good initial parameters. ):
-
 
 # %%
 def plot_with_errors_sample_z(res, df, mobility_df, region, d_thres, const, extrapolate=1, boundary=None, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True,):
@@ -412,15 +395,15 @@ def apply_by_mp(func, workers, args):
     return result
     
     
-# %%
+# %% MAIN SCRIPT
 if __name__ == '__main__':
     #-- Define control parameters
     # Flag to choose whether to save the results or not
     isSaveRes = False
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
-    sv_flnm_np  = 'Dan\\PracticeOutputs\\NYC_Jeff_Only.npy'
-    sv_flnm_mat = 'Dan\\PracticeOutputs\\NYC_Jeff_Only.mat'
+    sv_flnm_np  = 'Alex\\PracticeOutputs\\test.npy'
+    sv_flnm_mat = 'Alex\\PracticeOutputs\\test.mat'
 
 
     # Flag to choose whether multiprocessing should be used
@@ -467,7 +450,7 @@ if __name__ == '__main__':
 
 
     # %%
-    #  Let's load the data from the relevant folder. If this data doesn't exist for you, you'll need to run the `processing/raw_data_processing/daily_refresh.sh` script (which may require `pip install us`).
+    #  Let's load the data from the relevant folder.
     # import git
 
     # repo = git.Repo("./", search_parent_directories=True)
@@ -513,18 +496,20 @@ if __name__ == '__main__':
     df['date_processed'] = pd.to_datetime(df['date'].values)
     df['date_timestamp'] = pd.to_datetime(df['date'].values)
 
-    #NOTE/TODO: I'M PRETTY SURE WE NEED TO SET THIS TO GLOBAL_DAY_ZERO, NOT JUST THE MIN OF COUNTY VALUES
-        # This has happened to work before because we usually have the one county in washington
-        # that has data on 1/21 but once we remove counties, it causes issue
-    day_zero = df['date_processed'].min()
-    print('---- Day zero is ',day_zero)
-    df['date_processed'] = (df['date_processed'] - day_zero) / np.timedelta64(1, 'D')
-
     # %%
     #-- Define key dates
     global_dayzero = pd.to_datetime('2020 Jan 21')
     global_end_day = pd.to_datetime('2020 June 30')
     num_days = int((global_end_day-global_dayzero)/np.timedelta64(1, 'D'))
+
+        #NOTE/TODO: I'M PRETTY SURE WE NEED TO SET THIS TO GLOBAL_DAY_ZERO, NOT JUST THE MIN OF COUNTY VALUES
+        # This has happened to work before because we usually have the one county in washington
+        # that has data on 1/21 but once we remove counties, it causes issue
+    # day_zero = df['date_processed'].min()
+    # print('---- Day zero is ',day_zero)
+    print('---- Day zero is ',global_day_zero)
+    # df['date_processed'] = (df['date_processed'] - day_zero) / np.timedelta64(1, 'D')
+    df['date_processed'] = (df['date_processed'] - global_day_zero) / np.timedelta64(1, 'D')
 
 
     #-- Set day until which to train
@@ -684,11 +669,11 @@ if __name__ == '__main__':
     mobility_dfs = [mobility_df[mobility_df.fips.isin(fips_in_core)] for fips_in_core in fips_for_cores]
 
     #-- Simplify arguments for function by placing them in a dict
-    param_ranges = [(1.0, 3.0), (0.1, 0.5), (0.01, .9), (0.0001, 0.9), (0.0001, 0.9), (0.001, 0.1), (0.05, .7)] # shift can go 0 to 100 for alex method
+    param_ranges = [(1.0, 3.0), (0.1, 0.5), (0.01, .9), (0.0001, 0.9), (0.0001, 0.9), (0.001, 0.1), (0.05, .7)]
     initial_ranges = [(1.0e-7, 0.05), (1.0e-7, 0.05), (1.0e-7, 0.05), (1.0e-7, 0.01)]
-    # beta, alpha, sigma, ra, rs, delta, shift
+    # params: beta, alpha, sigma, ra, rs, delta, shift
     params = [1.8, 0.35, 0.1, 0.15, 0.34, 0.015, .5]
-    # OR? conditions: E, IA, IS, R
+    # conditions: E, IA, IS, R
     initial_conditions = [4e-6, 0.005, 0.005, 0.005]
 
     guesses = params + initial_conditions
