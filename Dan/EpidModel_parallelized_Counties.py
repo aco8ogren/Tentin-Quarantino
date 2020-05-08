@@ -452,12 +452,15 @@ if __name__ == '__main__':
 
     # %%
     #  Let's load the data from the relevant folder. If this data doesn't exist for you, you'll need to run the `processing/raw_data_processing/daily_refresh.sh` script (which may require `pip install us`).
-    import git
-
-    repo = git.Repo("./", search_parent_directories=True)
-    homedir = repo.working_dir
+    try:
+        import git
+        repo = git.Repo("./", search_parent_directories=True)
+        homedir = repo.working_dir
     # homedir = "C:/Users/alex/OneDrive - California Institute of Technology/Documents/GitHub/Tentin-Quarantino"
-    datadir = f"{homedir}/data/us/"
+        datadir = f"{homedir}/data/us/"
+    except ImportError:
+        homedir = "C:/Users/alex/OneDrive - California Institute of Technology/Documents/GitHub/Tentin-Quarantino/"
+        datadir = homedir + "data/us/"
 
     # %%
     #  Load the US data by county 
