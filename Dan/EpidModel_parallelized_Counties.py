@@ -336,9 +336,9 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, ErrFlag):
                 break
             
             data = select_region(main_df, fips, min_deaths=const['train_Dfrom'])#[:boundary]
-            if const['train_til'] is not None:
-                # crop data 
-                data = data[data['date_processed'] <= const['train_til']]
+            # if const['train_til'] is not None:
+            #     # crop data 
+            #     data = data[data['date_processed'] <= const['train_til']]
             boundary = len(data)
 
             if boundary <= const['min_train_days']:
@@ -360,7 +360,7 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, ErrFlag):
             tic = time.time()
             res = least_squares(fit_leastsq_z, const['guesses'], args=(data,mobility_data), bounds=np.transpose(np.array(const['ranges'])),jac = '2-point')
             #plot_with_errors_sample_z(res, const['params'], const['initial_conditions'], main_df, mobility_df, state, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True);
-            all_s, _, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['D_THRES'], const, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
+            all_s, _, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['train_Dfrom'], const, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
             toc = time.time()
             cube[0,:,ind] = fips
             # CONSIDER changing this to the first day when train_Dfrom was crossed
@@ -413,8 +413,8 @@ if __name__ == '__main__':
 
     #-- Define control parameters
     # Filename for saved .npy and .mat files (can include path)
-    sv_flnm_np  = 'Dan\\county_4_24_from_7_d50.npy'
-    sv_flnm_mat = 'Dan\\county_4_24_from_7_d50.mat'
+    sv_flnm_np  = 'Dan\\NYC_Jeff_Only.npy'
+    sv_flnm_mat = 'Dan\\NYC_Jeff_Only.mat'
 
 
     # Flag to choose whether multiprocessing should be used
@@ -434,15 +434,20 @@ if __name__ == '__main__':
         # D_THRES. D_THRES selects which counties are trained on and train_Dfrom selects 
         # which DAYS are used for the optimization
     
-    # NOTE/TODO: THERE MAY BE AN ISSUE WITH THIS
-        # We may be training from day 0, for example, but state_to_day0 is from the first day that we crossed D_THRES
-    # NOTE/TODO: Since we are training by county, some counties only just passed D_THRES
+    # NOTE: Since we are training by county, some counties only just passed D_THRES
         # As such, we almost certainly want to set train_Dfrom < DTHRES so that we have enough days of data for which to train
     train_Dfrom = 7
     # Minimum number of days required for a county to be trained on
         # After filtering using train_Dfrom and D_THRES, this makes sure that there
         # are at least min_train_days worth of days to train the model on (for fit_leastsqz)
     min_train_days = 5
+
+    #- Sub-select counties to train on
+    # Flag to choose whether to sub-select
+    isSubSelect = False
+    # List of counties which should be considered
+        # NOTE: This just removes ALL other counties from the df as soon as it can
+    just_train_these_fips = [36061, 1073]
 
 
     # %%
@@ -472,6 +477,10 @@ if __name__ == '__main__':
     df['fips'] = df['fips'].astype(int)
 
 
+    #-- When desired, extract only the counties which the user has provided for training
+    if isSubSelect:
+        df = df[df.fips.isin(just_train_these_fips)]
+
     # %%
     #-- Format date stuff
     # We want to count days as integers from some starting point.
@@ -481,6 +490,27 @@ if __name__ == '__main__':
     day_zero = df['date_processed'].min()
     print('---- Day zero is ',day_zero)
     df['date_processed'] = (df['date_processed'] - day_zero) / np.timedelta64(1, 'D')
+
+    # %%
+    #-- Define key dates
+    global_dayzero = pd.to_datetime('2020 Jan 21')
+    global_end_day = pd.to_datetime('2020 June 30')
+    num_days = int((global_end_day-global_dayzero)/np.timedelta64(1, 'D'))
+
+
+    #-- Set day until which to train
+    if train_til is not None:
+        # User provided a boundary date for training; translate to absolute time w.r.t global_dayzero
+        train_til = pd.to_datetime(train_til)
+        print('Only training until: ', train_til)
+        train_til = int((train_til-global_dayzero)/np.timedelta64(1,'D'))
+    # NOTE: commented out else to see if working with None directly in par_func works
+    # else:
+    #     # User did not provide a boundary; set boundary as last day in dataset
+    #     train_til = df.date_processed.max()
+
+    #-- Remove days beyond our training limit day
+    df = df[df['date_processed'] < train_til]
 
 
     # %%
@@ -540,52 +570,11 @@ if __name__ == '__main__':
     mobility_df = mobility_df.rename(columns = date_dict)
 
     # %%
-    if False:
-        get_ipython().run_line_magic('matplotlib', 'notebook')
-        get_ipython().run_line_magic('matplotlib', 'inline')
-
-        plt.figure()
-        data = select_region(df, 'Washington')
-        mobility_data = select_region(mobility_df,'Washington',mobility=True)
-        # parameters: beta, alpha, sigma, ra, rs, delta, shift
-        params = [1.8, 0.35, 0.1, 0.15, 0.34, 0.015, 0.5]
-        # conditions: E, IA, IS, R
-        initial_conditions = [4e-6, 0.0009, 0.0005, 0.0002]
-        s = model_z(params + initial_conditions, data, mobility_data)
-        plt.scatter(data['date_processed'], data['deaths'])
-        plt.plot(data['date_processed'], s[:, 5])
-        plt.show()
-
-    # %%
     # beta, alpha, sigma, ra, rs, delta, shift
     # param_ranges = [(1.0, 2.0), (0.1, 0.5), (0.1, 0.5), (0.05, 0.5), (0.32, 0.36), (0.005, 0.05), (0.1, .6)]
     # susceptible, exposed, infected_asymptomatic, infected_symptomatic
     # OR? conditions: E, IA, IS, R
     # initial_ranges = [(1.0e-7, 0.001), (1.0e-7, 0.001), (1.0e-7, 0.001), (1.0e-7, 0.001)]
-    if False:
-        param_ranges = [(1.0, 3.0), (0.1, 0.5), (0.01, .9), (0.0001, 0.9), (0.0001, 0.9), (0.001, 0.1), (0.05, .7)] # shift can go 0 to 100 for alex method
-        initial_ranges = [(1.0e-7, 0.05), (1.0e-7, 0.05), (1.0e-7, 0.05), (1.0e-7, 0.01)]
-
-        # parameters: beta, alpha, sigma, ra, rs, delta, shift
-        # params = [1.8, 0.35, 0.1, 0.15, 0.34, 0.015, 0.5]
-        # conditions: E, IA, IS, R
-        # initial_conditions = [4e-6, 0.0009, 0.0005, 0.0002]
-
-        params = [1.8, 0.35, 0.1, 0.15, 0.34, 0.015, .5]
-        initial_conditions = [4e-6, 0.005, 0.005, 0.005]
-
-        guesses = params + initial_conditions
-        ranges = param_ranges + initial_ranges
-
-        boundary = 15
-        state = 'New York'
-        data = select_region(df, state)[:boundary]
-        mobility_data = select_region(mobility_df, state,mobility = True)
-        res = least_squares(fit_leastsq_z, guesses, args=(data,mobility_data), bounds=np.transpose(np.array(ranges)),jac = '3-point')
-        all_s,D_quantiles,D,errors = plot_with_errors_sample_z(res, params, initial_conditions, df, mobility_df, state, extrapolate=1, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True)
-        all_s,D_quantiles,D,errors = plot_with_errors_sample_z(res, params, initial_conditions, df, mobility_df, state, extrapolate=1, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
-        #perr = get_errors(res,np.zeros((11,1)))
-        #print('parameter standard deviations = ',perr)
 
     # %%
     # Get maximum death count in each county 
@@ -633,13 +622,13 @@ if __name__ == '__main__':
     # %% 
     # Get first day that each county passed D_THRES
         # (as a pandas series)
-    fips_to_dayzero = df[df['deaths'] > D_THRES].groupby('fips')['date_timestamp'].min()
+    fips_to_dayzero = df[df['deaths'] > train_Dfrom].groupby('fips')['date_timestamp'].min()
 
 
     # %%
     # Get number of days with > D_THRES deaths 
         # (as pandas series)
-    fips_to_daysofdata = df[df['deaths'] > D_THRES].groupby('fips').size()
+    fips_to_daysofdata = df[df['deaths'] > train_Dfrom].groupby('fips').size()
 
 
     # %% 
@@ -664,22 +653,6 @@ if __name__ == '__main__':
     # Split the dataframes by core allocations
     main_dfs = [df[df.fips.isin(fips_in_core)] for fips_in_core in fips_for_cores]
     mobility_dfs = [mobility_df[mobility_df.fips.isin(fips_in_core)] for fips_in_core in fips_for_cores]
-
-    #-- Define key dates
-    global_dayzero = pd.to_datetime('2020 Jan 21')
-    global_end_day = pd.to_datetime('2020 June 30')
-    num_days = int((global_end_day-global_dayzero)/np.timedelta64(1, 'D'))
-
-    #-- Set day until which to train
-    if train_til is not None:
-        # User provided a boundary date for training; translate to absolute time w.r.t global_dayzero
-        train_til = pd.to_datetime(train_til)
-        print('Only training until: ', train_til)
-        train_til = int((train_til-global_dayzero)/np.timedelta64(1,'D'))
-    # NOTE: commented out else to see if working with None directly in par_func works
-    # else:
-    #     # User did not provide a boundary; set boundary as last day in dataset
-    #     train_til = df.date_processed.max()
 
     #-- Simplify arguments for function by placing them in a dict
     param_ranges = [(1.0, 3.0), (0.1, 0.5), (0.01, .9), (0.0001, 0.9), (0.0001, 0.9), (0.001, 0.1), (0.05, .7)] # shift can go 0 to 100 for alex method
@@ -722,7 +695,7 @@ if __name__ == '__main__':
         res = apply_by_mp(par_fun,workers,args)
     else:
         # Call parfun directly
-        res = par_fun(*args)
+        res = par_fun(*(args[0]))
     
     print('--------Total Time: %f----------'%(time.time()-tic0))
     print(res.shape)
@@ -730,3 +703,6 @@ if __name__ == '__main__':
     savedict = {'cube': res}
     savemat(sv_flnm_mat, savedict)
     print(res[:2,100,:10])
+
+
+# %%
