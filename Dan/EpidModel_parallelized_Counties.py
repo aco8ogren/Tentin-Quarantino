@@ -351,6 +351,10 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
             mobility_data = select_region(mobility_df, fips, min_deaths=const['train_Dfrom'], mobility = True)
 
             if const['isConstInitCond']:
+                #--Use provided set of initial conditions
+                guesses = const['guesses']
+            
+            else:
                 #-- Set initial conditions on case-by-case basis
                 # Get total population (so that we can define fractional values later)
                 pop = data.iloc[0]['Population'] 
@@ -379,16 +383,12 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
 
                 # Create full guesses vector
                 guesses = const['guesses'] + initial_conditions.tolist()
-            
-            else:
-                #--Use provided set of initial conditions
-                guesses = const['guesses']
 
             #-- Train the model
             tic = time.time()
-            res = least_squares(fit_leastsq_z, guesses, args=(data,mobility_data), bounds=np.transpose(np.array(const['ranges'])),jac = '2-point')
+            res = least_squares(fit_leastsq_z, guesses, args=(data,mobility_data, HYPERPARAMS), bounds=np.transpose(np.array(const['ranges'])),jac = '2-point')
             #plot_with_errors_sample_z(res, const['params'], initial_conditions, main_df, mobility_df, state, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True);
-            all_s, _, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['train_Dfrom'], const, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
+            all_s, _, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['train_Dfrom'], const, HYPERPARAMS, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
             toc = time.time()
             cube[0,:,ind] = fips
             # CONSIDER changing this to the first day when train_Dfrom was crossed
@@ -398,7 +398,7 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
                   '    core: %d\n'%coreInd + \
                   '    time: %f \n'%(toc-tic))
 
-            print(res.x)
+            #print(res.x)
             sys.stdout.flush()
         # except TypeError as TE:
         #     print('############################')
@@ -436,7 +436,6 @@ def apply_by_mp(func, workers, args):
     
     
 # %% MAIN SCRIPT
-# if __name__ == '__main__':
 def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),isSaveRes = False,sv_flnm_np='',
                     sv_flnm_mat = '',isMultiProc = False,workers = 1,train_til = '2020 04 24',
                     train_Dfrom = 7,min_train_days = 5,isSubSelect = True,
@@ -802,6 +801,5 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),isSaveRes = False,sv_flnm_np='',
 
 
 # %%
-SEIIRQD_model(isSubSelect = True,just_train_these_fips = [36061],isPlotBokeh = True)
-
-# %%
+if __name__ == '__main__':
+    SEIIRQD_model(isMultiProc=True,workers=8,isSubSelect=True,just_train_these_fips=[36061],isPlotBokeh=True)
