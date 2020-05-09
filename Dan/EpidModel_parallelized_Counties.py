@@ -31,8 +31,6 @@ from sklearn.metrics import mean_squared_error
 
 import os
 
-# %%
-tic0 = time.time()
 
 # %%
 #  Great! Let's also make a helper function to select data from a fips, starting when the pandemic hit to be able to fit models. #  
@@ -361,14 +359,14 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
                 # Assume that all reported cases are symptomatic AND some fraction of the symptomatic remain unreported
                     # Thus define a scaling factor for the reported values to get to actual symptomatic cases: Is = T*cases
                     # NOTE/TODO: this is a fudge factor that should become a hyperparameter
-                T = const['init_T']
+                init_T = const['init_T']
                 # Define what fraction of total infected cases are asymptomatic: I_a = R*I_tot
                     # WHO says about 80% of cases are asymptomatic or mild cases (let's use R = 0.85)
                     # https://www.who.int/docs/default-source/coronaviruse/situation-reports/20200306-sitrep-46-covid-19.pdf?sfvrsn=96b04adf_4
-                R = const['init_R']
+                init_R = const['init_R']
                 # Use these two values to get total I_a and I_s 
-                Is = T*data.iloc[0]['cases']
-                Ia = (R/(1-R)) * Is
+                Is = init_T*data.iloc[0]['cases']
+                Ia = (init_R/(1-init_R)) * Is
                 # Assume that number of exposed is some fudge factor scaling of number of symptomatic: E = F*Is
                 E = const['init_F']*Is
                 # Divide by population in next line to get fractional amounts
@@ -436,10 +434,16 @@ def apply_by_mp(func, workers, args):
     
     
 # %% MAIN SCRIPT
-def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),isSaveRes = False,sv_flnm_np='',
-                    sv_flnm_mat = '',isMultiProc = False,workers = 1,train_til = '2020 04 24',
-                    train_Dfrom = 7,min_train_days = 5,isSubSelect = True,
-                    just_train_these_fips = [36061],isPlotBokeh = False, isConstInitCond = True):
+def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
+                    isSaveRes = False,sv_flnm_np='',sv_flnm_mat = '',
+                    isMultiProc = False,workers = 1,
+                    train_til = '2020 04 24',train_Dfrom = 7,min_train_days = 5,
+                    isSubSelect = True,just_train_these_fips = [36061],
+                    isPlotBokeh = False, 
+                    isConstInitCond = True, init_vec=(2, 0.85, 3)):
+
+    tic0 = time.time()
+    
     #-- Define control parameters
     # Flag to choose whether to save the results or not
     # isSaveRes = False
@@ -768,9 +772,9 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),isSaveRes = False,sv_flnm_np='',
     const['isPlotBokeh'] = isPlotBokeh
     const['isConstInitCond'] = isConstInitCond
     # Explanation for these next to vars is in par_fun
-    const['init_T'] = 2         # scaling factor for total number of cases relative to reported
-    const['init_R'] = 0.85      # Fraction of total infected that are asymptomatic
-    const['init_F'] = 3         # Fudge factor for how many exposed relative to number of symptomatic 
+    const['init_T'] = init_vec[0]         # scaling factor for total number of cases relative to reported
+    const['init_R'] = init_vec[1]      # Fraction of total infected that are asymptomatic
+    const['init_F'] = init_vec[2]         # Fudge factor for how many exposed relative to number of symptomatic 
 
 
     # -%% 
