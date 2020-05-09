@@ -31,7 +31,7 @@ def evaluate(test_df, user_df):
         quantile = int(column) / 100.0
         total_loss += pinball_loss(join_df['deaths'].values, join_df[column].values, quantile) / 9.0
     return total_loss
-def evaluate_predictions(csv_to_score,start_date):
+def evaluate_predictions(csv_to_score,start_date, end_date=None):
     # Setup paths
     # repo = git.Repo("./", search_parent_directories=True)
     # homedir = repo.working_dir
@@ -55,7 +55,13 @@ def evaluate_predictions(csv_to_score,start_date):
     daily_df = pd.read_csv('data/us/covid/nyt_us_counties_daily.csv') # Daily data processed from NYT.
 
     daily_df['fips'] = daily_df['fips'].astype(int)
-    end_date = daily_df['date'].max()
+
+    # Set end_date as the last day with data when no end_date was provided
+    if end_date is None:
+        end_date = daily_df['date'].max()
+    
+    print('Evaluating until: %s'%end_date)
+
     daily_df['id'] = daily_df['date'] +'-'+ daily_df['fips'].astype(str)
     preperiod_df = daily_df[(daily_df['date'] < start_date)]
     daily_df = daily_df[(daily_df['date'] <= end_date)  & (daily_df['date'] >= start_date)]
