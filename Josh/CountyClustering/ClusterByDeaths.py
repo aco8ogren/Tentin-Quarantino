@@ -25,37 +25,21 @@ df=pd.merge(covidDF[['fips','deaths','date']],geoDF,how='left',on='fips')
 
 df=df[df.date==date].drop(columns='date')
 df=df[df.fips.isin(fipsList)].sort_values(by=['long','lat']).reset_index(drop=True)
+#%%
+
+TargetNumClusters=df.deaths.sum()/CritCases
+LongRes=np.floor((TargetNumClusters)**.5)
+numClusters=LongRes**2
+# quantiles=np.linspace(1/LongRes,1,int(LongRes))
 df['LongDeaths']=df.deaths.cumsum()
+df['LongQ']=pd.qcut(df.LongDeaths,int(LongRes),labels=False)
 
-#%%
-# DF.sort_values(by=['lat'],inplace=True)
-# print(DF)
-df['LongQDeaths']=df['LongDeaths']
-df['LongQ']=np.nan*np.ones(len(df))
-LongQ=0
-boundaries=[0]
-critLong=
-while df.iloc[-1].LongQDeaths>CritCases:
-        boundaries.append((df.LongQDeaths.values>=CritCases).argmax()+1)
-        df.iloc[boundaries[-2]:boundaries[-1],df.columns=='LongQ']=int(Q)
-        df.LongQDeaths-=df.iloc[boundaries[-1]-1].LongQDeaths
-        # print(df)
-        LongQ+=1
-    df.loc[df.LongQ.isna(),'LongQ']=LongQ-1
-#%%
-
-# TargetNumClusters=df.deaths.sum()/CritCases
-# LongRes=np.floor((TargetNumClusters)**.5)
-# numClusters=LongRes**2
-# # quantiles=np.linspace(1/LongRes,1,int(LongRes))
-# df['LongQ']=pd.qcut(df.LongDeaths,int(LongRes),labels=False)
-
-# resLat=(df[['LongQ','deaths']].groupby('LongQ').sum()/50).rename(columns={'deaths':'numRows'})
-# resLat.numRows=[np.floor(i) for i in resLat.numRows]
-# LatRes=resLat.to_dict()['numRows']
-# quantDFs=[df[df.LongQ==q] for q in range(df.LongQ.max())]
+resLat=(df[['LongQ','deaths']].groupby('LongQ').sum()/50).rename(columns={'deaths':'numRows'})
+resLat.numRows=[np.floor(i) for i in resLat.numRows]
+LatRes=resLat.to_dict()['numRows']
+quantDFs=[df[df.LongQ==q] for q in range(df.LongQ.max())]
 Q=0
-for i,DF in enumerate(quantDFs):
+for i,DF in enumerate([quantDFs]):
     # res=LatRes[i]
     DF.sort_values(by=['lat'],inplace=True)
     # print(DF)
