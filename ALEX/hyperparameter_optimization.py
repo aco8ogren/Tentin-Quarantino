@@ -5,9 +5,11 @@ import os
 import sys
 HomeDIR='Tentin-Quarantino'
 wd=os.path.dirname(os.path.realpath(__file__))
+
 DIR=wd[:wd.find(HomeDIR)+len(HomeDIR)]
 os.chdir(DIR)
 
+print(os.getcwd())
 
 homedir = DIR
 datadir = f"{homedir}"
@@ -16,9 +18,9 @@ datadir = f"{homedir}"
 from skopt import gp_minimize
 from skopt.plots import plot_convergence
 import numpy as np
-from copy_of_evaluator import evaluate_predictions
 from Dan.format_sub import format_file_for_evaluation
 from Dan.EpidModel_parallelized_Counties import SEIIRQD_model
+from Alex.copy_of_evaluator import evaluate_predictions
 
 # %%
 def test_error(HYPERPARAMS,train_til,test_from): 
@@ -31,7 +33,7 @@ def test_error(HYPERPARAMS,train_til,test_from):
     format_file_for_evaluation('temp_raw.mat','temp_processed.csv',isAllocCounties = True,isComputeDaily = True)
     
     # score = score_all_predictions('temp_processed.csv', date, model_date, mse=False, key='cases', bin_cutoffs=[20, 1000])
-    score = evaluate_predictions(csv_to_score,test_from)
+    score = evaluate_predictions('temp_processed.csv',test_from)
     return score[0]
 
 def f(HYPERPARAMS):
