@@ -20,9 +20,22 @@ GeoDat[GeoDat[:,-2]=='NA',-2]=GeoDat[GeoDat[:,-2]=='NA',-4]
 LatLong=GeoDat[:,-2:].astype(float)
 fips=GeoDat[:,0].astype(int)
 
+#%%
+# Creat DataFrame
+Geo=GeoDat[:,[0,-2,-1]]
+GeoDf=pd.DataFrame({'fips':Geo[:,0].astype(int),'long':Geo[:,1].astype(float),'lat':Geo[:,2].astype(float)})
+GeoDf.to_csv('Josh/Processing/Processed Data/GeoData.csv',index=False)
+# print(np.array_equal(Geo[:,1:].astype(float),LatLong))
+
+
+
+#%%
 # Create dictionary which relates fips integer code to shape (2,) np array of [long,lat]
 GeoDict={fips[i]:LatLong[i] for i in range(len(fips))}
 GeoDict[0]=np.nan
 File=open('Josh/Processing/Processed Data/GeoDict.pkl','wb')
 pickle.dump(GeoDict,File)
 File.close()
+
+
+# %%
