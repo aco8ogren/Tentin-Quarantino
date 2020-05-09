@@ -8,8 +8,7 @@ wd=os.path.dirname(os.path.realpath(__file__))
 
 DIR=wd[:wd.find(HomeDIR)+len(HomeDIR)]
 os.chdir(DIR)
-
-print(os.getcwd())
+sys.path.append(os.getcwd())
 
 homedir = DIR
 datadir = f"{homedir}"
