@@ -201,7 +201,7 @@ def model_z(params, data,mobility_data, tmax=-1):
 
     return s
 
-def fit_leastsq_z(params, data, mobility_data):
+def fit_leastsq_z(params, data, mobility_data,HYPERPARAMS):
     Ddata = (data['deaths'].values)
     Idata = (data['cases'].values)
     s = model_z(params, data, mobility_data)
@@ -213,13 +213,14 @@ def fit_leastsq_z(params, data, mobility_data):
     # R = s[:,4]
     D = s[:,5]
     
-    death_weight = 10
+    death_weight = HYPERPARAMS[2]
     weight_errors = np.linspace(0,1,len(Ddata))
     weight_errors = weight_errors + 1
     weight_errors = weight_errors/np.linalg.norm(weight_errors)
     death_errors = death_weight*np.multiply(weight_errors,(D-Ddata))
     # symptomatic_infected_errors = np.multiply(weight_errors,I_S - Idata)
-    symptomatic_infected_errors = np.multiply(weight_errors,-LeakyReLU(Idata,I_S,alpha=.2))
+
+    symptomatic_infected_errors = np.multiply(weight_errors,-LeakyReLU(Idata,I_S,alpha=HYPERPARAMS[3]))
 
     error = np.concatenate((death_errors, symptomatic_infected_errors))
     return error
@@ -234,10 +235,11 @@ def LeakyReLU(pred,true,alpha=0):
     return np.array(result)
 
 # %%
-def plot_with_errors_sample_z(res, df, mobility_df, region, d_thres, const, extrapolate=1, boundary=None, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True,):
+def plot_with_errors_sample_z(res, df, mobility_df, region, d_thres, const, HYPERPARAMS, extrapolate=1, boundary=None, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True):
     data = select_region(df, region, min_deaths=d_thres)
     mobility_data = select_region(mobility_df,region, min_deaths=d_thres, mobility = True)
-    errors = res.x*.05 # ALEX --> the parameter error is simply 5% of the parameter. i.e. we know the parameter to within +or- 5%.
+    p_err_frac = HYPERPARAMS[0]
+    errors = res.x*p_err_frac # ALEX --> the parameter error is simply 5% of the parameter. i.e. we know the parameter to within +or- 5%.
     
     all_s = []
     samples = 100
@@ -315,7 +317,7 @@ def determine_extrapolate(daysofdata,fips_start_day,num_days):
 
 # %%
 #-- Create function to be parallelized (to be performed on each core)
-def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, ErrFlag):
+def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, ErrFlag):
     cube = np.zeros((100+1,const['num_days'],len(fips_in_core)))
     for ind, fips in enumerate(fips_in_core):
         try:
@@ -348,9 +350,9 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, ErrFlag):
             
             mobility_data = select_region(mobility_df, fips, min_deaths=const['train_Dfrom'], mobility = True)
             tic = time.time()
-            res = least_squares(fit_leastsq_z, const['guesses'], args=(data,mobility_data), bounds=np.transpose(np.array(const['ranges'])),jac = '2-point')
+            res = least_squares(fit_leastsq_z, const['guesses'], args=(data,mobility_data,HYPERPARAMS), bounds=np.transpose(np.array(const['ranges'])),jac = '2-point')
             #plot_with_errors_sample_z(res, const['params'], const['initial_conditions'], main_df, mobility_df, state, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True);
-            all_s, _, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['train_Dfrom'], const, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
+            all_s, _, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['train_Dfrom'], const, HYPERPARAMS, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
             toc = time.time()
             cube[0,:,ind] = fips
             # CONSIDER changing this to the first day when train_Dfrom was crossed
@@ -396,27 +398,31 @@ def apply_by_mp(func, workers, args):
     
     
 # %% MAIN SCRIPT
-if __name__ == '__main__':
+# if __name__ == '__main__':
+def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),isSaveRes = False,sv_flnm_np='',
+                    sv_flnm_mat = '',isMultiProc = False,workers = 0,train_til = '2020 04 24',
+                    train_Dfrom = 7,min_train_days = 5,isSubSelect = True,
+                    just_train_these_fips = [36061],isPlotBokeh = False):
     #-- Define control parameters
     # Flag to choose whether to save the results or not
-    isSaveRes = True
+    # isSaveRes = False
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
-    sv_flnm_np  = 'Alex\\PracticeOutputs\\REAL_OUTPUT.npy'
-    sv_flnm_mat = 'Alex\\PracticeOutputs\\REAL_OUTPUT.mat'
+    # sv_flnm_np  = 'Alex\\PracticeOutputs\\REAL_OUTPUT.npy'
+    # sv_flnm_mat = 'Alex\\PracticeOutputs\\REAL_OUTPUT.mat'
 
 
     # Flag to choose whether multiprocessing should be used
-    isMultiProc = True
+    # isMultiProc = True
     # Number of cores to use (logical cores, not physical cores)
-    workers = 20
+    # workers = 20
     # Threshold of deaths at and below which a COUNTY will not be trained on
         # Filters which COUNTIES are looped over in optimization/minimization loop
-    D_THRES = 50
+    D_THRES = HYPERPARAMS[1]
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
         # OR: leave as None to train until the latest data for which there is data
-    train_til = '2020 04 24'
+    # train_til = '2020 04 24'
     # Minimum deaths considered in training
         # Sets the first DAY which will be calculated as part of the optimization
         # by only including days with more than this many deaths. THIS IS DIFFERENT than 
@@ -425,18 +431,18 @@ if __name__ == '__main__':
     
     # NOTE: Since we are training by county, some counties only just passed D_THRES
         # As such, we almost certainly want to set train_Dfrom < DTHRES so that we have enough days of data for which to train
-    train_Dfrom = 7
+    # train_Dfrom = 7
     # Minimum number of days required for a county to be trained on
         # After filtering using train_Dfrom and D_THRES, this makes sure that there
         # are at least min_train_days worth of days to train the model on (for fit_leastsqz)
-    min_train_days = 5
+    # min_train_days = 5
 
     #- Sub-select counties to train on
     # Flag to choose whether to sub-select
-    isSubSelect = False
+    # isSubSelect = False
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
-    just_train_these_fips = [36061, 1073, 56035, 6037] #
+    # just_train_these_fips = [36061, 1073, 56035, 6037] #
 
 
 
@@ -444,14 +450,14 @@ if __name__ == '__main__':
     #-- When not multiprocessing, enable bokeh plotting (since won't cause issue)
     # Flag to stating whether to plot. This only matters when not multiprocessing (isMultiProc=False)
         # When isMultiProc=True, bokeh will cause errors so we ignore this flag
-    isPlotBokeh     = False      
+    # isPlotBokeh     = False      
     # Turn on plotting if available
     if (not isMultiProc) and isPlotBokeh:
         bokeh.io.output_notebook()
         hv.extension('bokeh')
 
 
-    # %%
+    # -%%
     #  Let's load the data from the relevant folder.
     # import git
 
@@ -478,11 +484,11 @@ if __name__ == '__main__':
     # print(homedir)
     # print(datadir)
 
-    # %%
+    # -%%
     #  Load the US data by county 
     df = pd.read_csv(datadir + 'covid/nyt_us_counties.csv')
 
-    # %%
+    # -%%
     #-- Do some reformatting of existing entries
     # # (OPTIONAL) show the NaN entries
     # df[~df['fips'].notna()]
@@ -500,13 +506,13 @@ if __name__ == '__main__':
     if isSubSelect:
         df = df[df.fips.isin(just_train_these_fips)]
 
-    # %%
+    # -%%
     #-- Format date stuff
     # We want to count days as integers from some starting point.
     df['date_processed'] = pd.to_datetime(df['date'].values)
     df['date_datetime'] = pd.to_datetime(df['date'].values)
 
-    # %%
+    # -%%
     #-- Define key dates
     global_dayzero = pd.to_datetime('2020 Jan 21')
     global_end_day = pd.to_datetime('2020 June 30')
@@ -531,7 +537,7 @@ if __name__ == '__main__':
     #     # User did not provide a boundary; set boundary as last day in dataset
     #     train_til = df.date_processed.max()
 
-    # %% Plot the raw data for the subselection: just_train_these_fips
+    # -%% Plot the raw data for the subselection: just_train_these_fips
     if (not isMultiProc) and isPlotBokeh:
         for fips in just_train_these_fips:
             county_name = df[df['fips']==fips]['county'].values[0]
@@ -553,14 +559,14 @@ if __name__ == '__main__':
                 p.renderers.extend([vline])
             p.legend.location = 'top_left'
             bokeh.io.show(p)
-    # %%
+    # -%%
     #-- Remove days beyond our training limit day
     if train_til is not None:
         train_til = int((train_til-global_dayzero)/np.timedelta64(1,'D'))
         df = df[df['date_processed'] < train_til]
 
 
-    # %%
+    # -%%
     # Load county-based population data
     populations = pd.read_csv(datadir + 'demographics/county_populations.csv')
 
@@ -572,21 +578,21 @@ if __name__ == '__main__':
     # Merge to insert population data into main df
     df = df.merge(populations[['fips','Population']],how='left',on='fips')
 
-    # %%
+    # -%%
     #  Just checking to make sure the data is here...
     # print(df)
     # print(' ')
 
-    # %% 
+    # -%% 
     # Our main control list (equivalent to list_of_states) is based off the fips codes
     #   since many counties have the same name in multiple states meanwhile FIPS is a unique identifier
     list_of_fips = list(np.unique(df['fips']))
 
-    # %%
+    # -%%
     # load mobility data
     mobility_df = pd.read_csv(datadir + 'mobility/DL-us-m50_index.csv')
 
-    # %%
+    # -%%
     #-- Gather necessary counties from mobility data
     # cast fips to integers
     mobility_df = mobility_df[mobility_df['fips'].notna()]      # remove entries without fips (us aggregate)
@@ -602,7 +608,7 @@ if __name__ == '__main__':
     # Keep only relavent counties
     mobility_df = mobility_df[mobility_df.fips.isin(list_of_fips)]
 
-    # %%
+    # -%%
     # Convert mobility data column headers to date_processed format
     date_dict = dict()
     for col in list(mobility_df.columns):
@@ -617,20 +623,20 @@ if __name__ == '__main__':
     mobility_df = mobility_df.rename(columns = temp_dict)
     mobility_df = mobility_df.rename(columns = date_dict)
 
-    # %%
+    # -%%
     # beta, alpha, sigma, ra, rs, delta, shift
     # param_ranges = [(1.0, 2.0), (0.1, 0.5), (0.1, 0.5), (0.05, 0.5), (0.32, 0.36), (0.005, 0.05), (0.1, .6)]
     # susceptible, exposed, infected_asymptomatic, infected_symptomatic
     # conditions: E, IA, IS, R
     # initial_ranges = [(1.0e-7, 0.001), (1.0e-7, 0.001), (1.0e-7, 0.001), (1.0e-7, 0.001)]
 
-    # %%
+    # -%%
     # Get maximum death count in each county 
         # (as a pandas series)
     fips_to_maxdeaths = df.groupby('fips')['deaths'].max()
 
 
-    # %%
+    # -%%
     # Find counties with enough deaths to be trained on ( > D_THRES)
     list_of_fips_to_train = list(fips_to_maxdeaths[fips_to_maxdeaths > D_THRES].index)
 
@@ -667,19 +673,19 @@ if __name__ == '__main__':
     print('-- Total Counties: %d --'%len(print_order))
     
 
-    # %% 
+    # -%% 
     # Get first day that each county passed D_THRES
         # (as a pandas series)
     fips_to_dayzero = df[df['deaths'] > train_Dfrom].groupby('fips')['date_datetime'].min()
 
 
-    # %%
+    # -%%
     # Get number of days with > D_THRES deaths 
         # (as pandas series)
     fips_to_daysofdata = df[df['deaths'] > train_Dfrom].groupby('fips').size()
 
 
-    # %% 
+    # -%% 
     # Prepare for parallelization
     
     
@@ -732,7 +738,7 @@ if __name__ == '__main__':
     const['isPlotBokeh'] = isPlotBokeh
 
 
-    # %% 
+    # -%% 
     #-- Call to run in parallel
     if isMultiProc:
         # Flag to manage exceptions from other cores
@@ -741,7 +747,7 @@ if __name__ == '__main__':
         # Set ErrFlag to None since don't want any multiprocessing stuff
         ErrFlag = None
     # Format arguments
-    args = [(fips_for_cores[i], main_dfs[i], mobility_dfs[i], i, const, ErrFlag) for i in range(workers)]
+    args = [(fips_for_cores[i], main_dfs[i], mobility_dfs[i], i, const, HYPERPARAMS, ErrFlag) for i in range(workers)]
     if isMultiProc:
         # Call parallelizer function
         res = apply_by_mp(par_fun,workers,args)
@@ -756,7 +762,10 @@ if __name__ == '__main__':
         np.save(sv_flnm_np, res)
         savedict = {'cube': res}
         savemat(sv_flnm_mat, savedict)
-    print(res[:2,100,:10])
+    print(res[:2,100,:10]) # list the fips and the deaths on day 100 for the first 10 counties in the list of trained counties
 
+
+# %%
+SEIIRQD_model(isSubSelect = True,just_train_these_fips = [36061],isPlotBokeh = True)
 
 # %%
