@@ -349,10 +349,46 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
             extrap = determine_extrapolate(daysofdata,fips_start_day,const['num_days'])
             
             mobility_data = select_region(mobility_df, fips, min_deaths=const['train_Dfrom'], mobility = True)
+
+            if const['isConstInitCond']:
+                #-- Set initial conditions on case-by-case basis
+                # Get total population (so that we can define fractional values later)
+                pop = data.iloc[0]['Population'] 
+                # Assume that all reported cases are symptomatic AND some fraction of the symptomatic remain unreported
+                    # Thus define a scaling factor for the reported values to get to actual symptomatic cases: Is = T*cases
+                    # NOTE/TODO: this is a fudge factor that should become a hyperparameter
+                T = const['init_T']
+                # Define what fraction of total infected cases are asymptomatic: I_a = R*I_tot
+                    # WHO says about 80% of cases are asymptomatic or mild cases (let's use R = 0.85)
+                    # https://www.who.int/docs/default-source/coronaviruse/situation-reports/20200306-sitrep-46-covid-19.pdf?sfvrsn=96b04adf_4
+                R = const['init_R']
+                # Use these two values to get total I_a and I_s 
+                Is = T*data.iloc[0]['cases']
+                Ia = (R/(1-R)) * Is
+                # Assume that number of exposed is some fudge factor scaling of number of symptomatic: E = F*Is
+                E = const['init_F']*Is
+                # Divide by population in next line to get fractional amounts
+                    # conditions: E, IA, IS, R
+                initial_conditions = [E/pop, Ia/pop, Is/pop, 0.005]
+            
+
+                # Force values to be within bounds
+                lb = [rng[0] for rng in const['ranges'][-4:]]   # Extract lower bounds from ranges
+                ub = [rng[1] for rng in const['ranges'][-4:]]   # Extract upper bounds from ranges
+                initial_conditions = np.clip(initial_conditions, lb, ub) 
+
+                # Create full guesses vector
+                guesses = const['guesses'] + initial_conditions.tolist()
+            
+            else:
+                #--Use provided set of initial conditions
+                guesses = const['guesses']
+
+            #-- Train the model
             tic = time.time()
-            res = least_squares(fit_leastsq_z, const['guesses'], args=(data,mobility_data,HYPERPARAMS), bounds=np.transpose(np.array(const['ranges'])),jac = '2-point')
-            #plot_with_errors_sample_z(res, const['params'], const['initial_conditions'], main_df, mobility_df, state, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True);
-            all_s, _, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['train_Dfrom'], const, HYPERPARAMS, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
+            res = least_squares(fit_leastsq_z, guesses, args=(data,mobility_data), bounds=np.transpose(np.array(const['ranges'])),jac = '2-point')
+            #plot_with_errors_sample_z(res, const['params'], initial_conditions, main_df, mobility_df, state, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True);
+            all_s, _, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['train_Dfrom'], const, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
             toc = time.time()
             cube[0,:,ind] = fips
             # CONSIDER changing this to the first day when train_Dfrom was crossed
@@ -361,6 +397,8 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
             print('____%d (county %d of %d)____\n'%(fips, ind+1, len(fips_in_core)) + \
                   '    core: %d\n'%coreInd + \
                   '    time: %f \n'%(toc-tic))
+
+            print(res.x)
             sys.stdout.flush()
         # except TypeError as TE:
         #     print('############################')
@@ -400,9 +438,9 @@ def apply_by_mp(func, workers, args):
 # %% MAIN SCRIPT
 # if __name__ == '__main__':
 def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),isSaveRes = False,sv_flnm_np='',
-                    sv_flnm_mat = '',isMultiProc = False,workers = 0,train_til = '2020 04 24',
+                    sv_flnm_mat = '',isMultiProc = False,workers = 1,train_til = '2020 04 24',
                     train_Dfrom = 7,min_train_days = 5,isSubSelect = True,
-                    just_train_these_fips = [36061],isPlotBokeh = False):
+                    just_train_these_fips = [36061],isPlotBokeh = False, isConstInitCond = True):
     #-- Define control parameters
     # Flag to choose whether to save the results or not
     # isSaveRes = False
@@ -445,8 +483,6 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),isSaveRes = False,sv_flnm_np='',
     # just_train_these_fips = [36061, 1073, 56035, 6037] #
 
 
-
-
     #-- When not multiprocessing, enable bokeh plotting (since won't cause issue)
     # Flag to stating whether to plot. This only matters when not multiprocessing (isMultiProc=False)
         # When isMultiProc=True, bokeh will cause errors so we ignore this flag
@@ -463,10 +499,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),isSaveRes = False,sv_flnm_np='',
 
     # repo = git.Repo("./", search_parent_directories=True)
     # homedir = repo.working_dir
-    # # homedir = "C:/Users/alex/OneDrive - California Institute of Technology/Documents/GitHub/Tentin-Quarantino"
     # datadir = f"{homedir}/data/us/"
-
-    # os.chdir(homedir)
 
     HomeDIR='Tentin-Quarantino'
     wd=os.path.dirname(os.path.realpath(__file__))
@@ -518,11 +551,6 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),isSaveRes = False,sv_flnm_np='',
     global_end_day = pd.to_datetime('2020 June 30')
     num_days = int((global_end_day-global_dayzero)/np.timedelta64(1, 'D'))
 
-        #NOTE/TODO: I'M PRETTY SURE WE NEED TO SET THIS TO GLOBAL_DAY_ZERO, NOT JUST THE MIN OF COUNTY VALUES
-        # This has happened to work before because we usually have the one county in washington
-        # that has data on 1/21 but once we remove counties, it causes issue
-    # day_zero = df['date_processed'].min()
-    # print('---- Day zero is ',day_zero)
     print('---- Day zero is ',global_dayzero)
     # df['date_processed'] = (df['date_processed'] - day_zero) / np.timedelta64(1, 'D')
     df['date_processed'] = (df['date_processed'] - global_dayzero) / np.timedelta64(1, 'D')
@@ -532,10 +560,6 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),isSaveRes = False,sv_flnm_np='',
         # User provided a boundary date for training; translate to absolute time w.r.t global_dayzero
         train_til = pd.to_datetime(train_til)
         print('---- Only training until: ', train_til)
-    # NOTE: commented out else to see if working with None directly in par_func works
-    # else:
-    #     # User did not provide a boundary; set boundary as last day in dataset
-    #     train_til = df.date_processed.max()
 
     # -%% Plot the raw data for the subselection: just_train_these_fips
     if (not isMultiProc) and isPlotBokeh:
@@ -557,9 +581,11 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),isSaveRes = False,sv_flnm_np='',
             if train_til is not None:
                 vline = Span(location=train_til, dimension='height', line_color='black', line_width=3)
                 p.renderers.extend([vline])
-            p.legend.location = 'top_left'
+            #p.legend.location = 'top_left'
             bokeh.io.show(p)
-    # -%%
+
+
+    # %%
     #-- Remove days beyond our training limit day
     if train_til is not None:
         train_til = int((train_til-global_dayzero)/np.timedelta64(1,'D'))
@@ -714,8 +740,14 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),isSaveRes = False,sv_flnm_np='',
     # params: beta, alpha, sigma, ra, rs, delta, shift
     params = [1.8, 0.35, 0.1, 0.15, 0.34, 0.015, .5]
     # conditions: E, IA, IS, R
-    initial_conditions = [4e-6, 0.005, 0.005, 0.005]
-
+    if isConstInitCond:
+        # Provide same initial conditions for all counties
+        initial_conditions = [4e-6, 0.005, 0.005, 0.005]
+    else:
+        # Add empty string so that we can append dedicated init cond. in par_fun
+        initial_conditions = []
+    
+    
     guesses = params + initial_conditions
     ranges = param_ranges + initial_ranges
 
@@ -729,13 +761,17 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),isSaveRes = False,sv_flnm_np='',
     const['guesses'] = guesses
     const['ranges'] = ranges
     const['params'] = params
-    const['initial_conditions'] = initial_conditions
     const['D_THRES'] = D_THRES
     const['train_til'] = train_til
     const['train_Dfrom'] = train_Dfrom
     const['min_train_days'] = min_train_days
     const['isMultiProc'] = isMultiProc
     const['isPlotBokeh'] = isPlotBokeh
+    const['isConstInitCond'] = isConstInitCond
+    # Explanation for these next to vars is in par_fun
+    const['init_T'] = 2         # scaling factor for total number of cases relative to reported
+    const['init_R'] = 0.85      # Fraction of total infected that are asymptomatic
+    const['init_F'] = 3         # Fudge factor for how many exposed relative to number of symptomatic 
 
 
     # -%% 
