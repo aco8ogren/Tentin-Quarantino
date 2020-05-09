@@ -12,6 +12,7 @@ sys.path.append(os.getcwd())
 
 homedir = DIR
 datadir = f"{homedir}"
+# %%
 
 from skopt import gp_minimize
 from skopt.plots import plot_convergence
@@ -25,7 +26,7 @@ def test_error(HYPERPARAMS,train_til,test_from):
     # Given a set of hyperparameters and days to train from and until,
     # this function trains a model, then evaluates and returns pinball loss
     SEIIRQD_model(HYPERPARAMS = HYPERPARAMS,isSaveRes = True,sv_flnm_np='temp_raw.npy',
-                    sv_flnm_mat = 'temp_raw.mat',isMultiProc = True,workers = 20,train_til = train_til,
+                    sv_flnm_mat = 'temp_raw.mat',isMultiProc = True,workers = 6,train_til = train_til,
                     train_Dfrom = 7,min_train_days = 5,isSubSelect = False, # CHANGE isSubSelect TO FALSE WHEN DONE DEBUGGING! New York is 36061
                     just_train_these_fips = [],isPlotBokeh = False)
     format_file_for_evaluation('temp_raw.mat','temp_processed.csv',isAllocCounties = True,isComputeDaily = True)
