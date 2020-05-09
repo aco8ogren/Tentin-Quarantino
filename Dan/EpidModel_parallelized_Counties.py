@@ -392,19 +392,13 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
             # CONSIDER changing this to the first day when train_Dfrom was crossed
                 # would need to change the d_thres provided to plot_with_errors_sample_z above
             cube[1:,fips_start_day:,ind] = all_s[:,:,5]
-            print('____%d (county %d of %d)____\n'%(fips, ind+1, len(fips_in_core)) + \
-                  '    core: %d\n'%coreInd + \
-                  '    time: %f \n'%(toc-tic))
+            if const['verbosity'] >= 3:
+                print('____%d (county %d of %d)____\n'%(fips, ind+1, len(fips_in_core)) + \
+                    '    core: %d\n'%coreInd + \
+                    '    time: %f \n'%(toc-tic))
 
             #print(res.x)
             sys.stdout.flush()
-        # except TypeError as TE:
-        #     print('############################')
-        #     print('Handled Exception Occurred:')
-        #     print('core index: ', coreInd)
-        #     print('   issue on: (%d) - %s - %s'%(fips, const['fips_to_county'][fips],const['fips_to_state'][fips]))
-        #     print(TE)
-        #     print('############################')
         except:
             print('############################\n' + \
                   'UNHANDLED Exception Occurred:\n' + \
@@ -417,9 +411,10 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
                 ErrFlag.set()
             raise
     # do non-risky stuff outside of try context
-    print('############################\n' + \
-          '### Core %2d has finished ###\n'%coreInd + \
-          '############################\n')
+    if const['verbosity'] >= 3:
+        print('############################\n' + \
+            '### Core %2d has finished ###\n'%coreInd + \
+            '############################\n')
     return cube
 
 def apply_by_mp(func, workers, args):
@@ -440,10 +435,19 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
                     train_til = '2020 04 24',train_Dfrom = 7,min_train_days = 5,
                     isSubSelect = True,just_train_these_fips = [36061],
                     isPlotBokeh = False, 
-                    isConstInitCond = True, init_vec=(2, 0.85, 3)):
+                    isConstInitCond = True, init_vec=(2, 0.85, 3),
+                    verbosity = 3):
 
     tic0 = time.time()
     
+    #-- Verbosity explanation:
+    # There are multiple levels of verbosity based on the provided integer
+    #   0 :     No print statements are executed
+    #   1 :     Only total time is printed
+    #   2 :     Only prints in main function are shown (those in par_fun are suppressed)
+    #   3 :     All print statements are executed
+    # *** Error-related prints are always printed
+
     #-- Define control parameters
     # Flag to choose whether to save the results or not
     # isSaveRes = False
@@ -513,13 +517,6 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     homedir = DIR
     datadir = f"{homedir}/data/us/"
 
-    # print(os.path.dirname(os.path.realpath(__file__)))
-    # print(wd)
-    # print(HomeDIR)
-    # print(DIR)
-    # print(homedir)
-    # print(datadir)
-
     # -%%
     #  Load the US data by county 
     df = pd.read_csv(datadir + 'covid/nyt_us_counties.csv')
@@ -554,7 +551,8 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     global_end_day = pd.to_datetime('2020 June 30')
     num_days = int((global_end_day-global_dayzero)/np.timedelta64(1, 'D'))
 
-    print('---- Day zero is ',global_dayzero)
+    if verbosity >= 2:
+        print('---- Day zero is ',global_dayzero)
     # df['date_processed'] = (df['date_processed'] - day_zero) / np.timedelta64(1, 'D')
     df['date_processed'] = (df['date_processed'] - global_dayzero) / np.timedelta64(1, 'D')
 
@@ -562,7 +560,8 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     if train_til is not None:
         # User provided a boundary date for training; translate to absolute time w.r.t global_dayzero
         train_til = pd.to_datetime(train_til)
-        print('---- Only training until: ', train_til)
+        if verbosity >= 2:
+            print('---- Only training until: ', train_til)
 
     # -%% Plot the raw data for the subselection: just_train_these_fips
     if (not isMultiProc) and isPlotBokeh:
@@ -692,14 +691,15 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     # Sort the fips to train by number of deaths
     print_order = fips_to_maxdeaths[list_of_fips_to_train].sort_values(ascending=False)
 
-    # Print
-    print('deaths |  fips   |        county        |     state     ')
-    print('========================================================')
-    for fips in print_order.index:
-        print('%5d  |  %5d  |  %18s  |  %s'%(fips_to_maxdeaths[fips], fips, fips_to_county[fips], fips_to_state[fips]))
-    print('========================================================')
-    print('deaths |  fips   |        county        |     state     ')
-    print('-- Total Counties: %d --'%len(print_order))
+    if verbosity >= 2:
+        # Print
+        print('deaths |  fips   |        county        |     state     ')
+        print('========================================================')
+        for fips in print_order.index:
+            print('%5d  |  %5d  |  %18s  |  %s'%(fips_to_maxdeaths[fips], fips, fips_to_county[fips], fips_to_state[fips]))
+        print('========================================================')
+        print('deaths |  fips   |        county        |     state     ')
+        print('-- Total Counties: %d --'%len(print_order))
     
 
     # -%% 
@@ -727,7 +727,8 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         # Set number of workers to 1 since not multiprocessing
         workers = 1
 
-    print('Using %d cores'%workers)
+    if verbosity >= 2:
+        print('Using %d cores'%workers)
 
     #-- Split into parallelizable chunks
         # Here I am splitting arbitrarily. Could consider ordering by number of days of data and then splitting s.t. we evenly 
@@ -771,6 +772,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     const['isMultiProc'] = isMultiProc
     const['isPlotBokeh'] = isPlotBokeh
     const['isConstInitCond'] = isConstInitCond
+    const['verbosity'] = verbosity
     # Explanation for these next to vars is in par_fun
     const['init_T'] = init_vec[0]         # scaling factor for total number of cases relative to reported
     const['init_R'] = init_vec[1]      # Fraction of total infected that are asymptomatic
@@ -794,14 +796,20 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         # Call parfun directly
         res = par_fun(*(args[0]))
     
-    print('--------Total Time: %f----------'%(time.time()-tic0))
-    print(res.shape)
+    if verbosity >= 1:
+        print('--------Total Time: %f----------'%(time.time()-tic0))
+    if verbosity >= 2:
+        print("Resulting Cube Shape: %s"%list(res.shape))
+
     if isSaveRes:
         # Save results only when requested to do so
         np.save(sv_flnm_np, res)
         savedict = {'cube': res}
         savemat(sv_flnm_mat, savedict)
-    print(res[:2,100,:10]) # list the fips and the deaths on day 100 for the first 10 counties in the list of trained counties
+    
+    if verbosity >= 2:
+        print('Sample of cube:')
+        print(res[:2,100,:4]) # list the fips and the deaths on day 100 for the first 10 counties in the list of trained counties
 
 
 # %%
