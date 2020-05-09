@@ -6,25 +6,6 @@ import pandas as pd
 import git
 import cube_formatter as cf
 
-# %% Setup paths
-repo = git.Repo("./", search_parent_directories=True)
-homedir = repo.working_dir
-
-os.chdir(homedir)
-
-# %% 
-# Constants for analysis
-input_fln  = f"{homedir}/Dan/train_til_4_22.mat"             # input filename  (file to be reformatted)
-output_fln = f"{homedir}/Dan/train_til_4_22.csv"           # output filename (file to be created)
-# sample file (TA-provided reference file)
-sampfile = f"{homedir}/sample_submission.csv"
-# current county deaths reference file (used when isAllocCounties=True)
-county_ref_fln = f"{homedir}/data/us/covid/nyt_us_counties_daily.csv"
-
-# Control flags
-isAllocCounties = True          # Flag to distribue state deaths amongst counties
-isComputeDaily = True           # Flag to translate cummulative data to daily counts
-
 # %%
 def read_file(filename):
     # Function to format results into a submittable csv file
@@ -60,118 +41,146 @@ def read_file(filename):
     
     return data
 
-# %%
-# LOAD DATA
-
-##-- Read files
-data = cf.read_cube(input_fln)
-samp = pd.read_csv(sampfile)
-
-# %%
-# (OPTIONAL) Translate a cummulative data set to daily death count
-
-if isComputeDaily:
-    data = cf.calc_daily(data)
-
-# %%
-# (OPTIONAL) ALLOCATE STATE PREDICTIONS TO COUNTIES
+# %% Define formatting function
+def format_file_for_evaluation(input_fln,output_fln,isAllocCounties = True,isComputeDaily = True):
+# %-% Setup paths
+    HomeDIR='Tentin-Quarantino'
+    wd=os.path.dirname(os.path.realpath(__file__))
+    DIR=wd[:wd.find(HomeDIR)+len(HomeDIR)]
+    os.chdir(DIR)
 
 
-if isAllocCounties:
-    data = cf.alloc_counties(data, county_ref_fln)
+    homedir = DIR
 
-# %%
-# CALCULATE QUANTILES and extract data chunks (split into fips and percentiles)
+    os.chdir(homedir)
 
-##-- Extract pertinent information from sample file
-perc_list = np.array(samp.columns[1:]).astype(int)
-dates = [dat[:10] for dat in np.array(samp['id'])]
-fips  = [dat[11:] for dat in np.array(samp['id'])]
+    # %-% 
+    # Constants for analysis
+    # input_fln  = f"{homedir}/Dan/train_til_4_22.mat"             # input filename  (file to be reformatted)
+    # output_fln = f"{homedir}/Dan/train_til_4_22.csv"           # output filename (file to be created)
+    # sample file (TA-provided reference file)
+    sampfile = f"{homedir}/sample_submission.csv"
+    # current county deaths reference file (used when isAllocCounties=True)
+    county_ref_fln = f"{homedir}/data/us/covid/nyt_us_counties_daily.csv"
 
-##-- Check that enough dates were provided
-Ndays = len(np.unique(np.array(dates)))   # use np.unique to remove repeated date instances
-if Ndays < data.shape[1]:
-    # Input has too many days; assume both end on same day and thus crop input
-    data = data[:,-Ndays:,:]
-elif Ndays > data.shape[1]:
-    raise ValueError('Data provided does not have enough dates (need more columns for each county')
+    # Control flags
+    # isAllocCounties = True          # Flag to distribue state deaths amongst counties
+    # isComputeDaily = True           # Flag to translate cummulative data to daily counts
 
-##-- Separate cube into FIPS layer and data layer
-data_fips = np.array(['%d' %int(x) for x in data[0,0,:]])    # cast to string so fips datatypes match
-data = data[1:,:,:]
 
-##-- Calculate quantiles
-quantiles = np.percentile(data,perc_list,0)
 
-# %%
-# PERORM ANALYSIS (FASTER method for output file)
-#   - Places the data into a temporary numpy matrix row-by-row
-#   - Converts the matrix into a pandas dataframe afterwards
-#   - This takes much less time than the method in the next cell
-#   - Still not ideal though
+    # %%
+    # LOAD DATA
 
-##-- Re-order data by FIPS for output
-# Order FIPS
-fips_ind = np.argsort(data_fips)
-data_fips = list(data_fips[fips_ind])
-# Reorder matrix
-data = data[:,:,fips_ind]
-quantiles = quantiles[:,:,fips_ind]
+    ##-- Read files
+    data = cf.read_cube(input_fln)
+    samp = pd.read_csv(sampfile)
 
-##-- Create Final output matrix (with 0s)
-output_data = np.zeros((len(fips),len(perc_list)))
+    # %%
+    # (OPTIONAL) Translate a cummulative data set to daily death count
 
-##-- Iterate through matrix rows populating them
-dcounter = -1        # Counter for what day we are on
-fip1     = fips[0]  # first fips; used to determine when day changes
-for i in range(0,output_data.shape[0]):
-    if fip1 == fips[i]:
-        # increase counter since day has changed
-        dcounter += 1
-    
-    # Find the fips instance in the input data
-    try:
-        fips_ind = data_fips.index(fips[i])
-    except ValueError:
-        # Skip rows where we have no prediction for the given county
-        continue
-    
-    # Populate ouptput matrix
-    output_data[i,:] = quantiles[:,dcounter,fips_ind]
-    
-# Create pandas dataframe from this matrix (easier for csv saving)
-output_df = pd.DataFrame(output_data, columns=samp.columns[1:])
-output_df.insert(0,column='id',value=samp['id'])
+    if isComputeDaily:
+        data = cf.calc_daily(data)
 
-# %%
-# PERFORM ANALYSIS (SLOW method for output file):
-#   - Places the data into the sample dataframe row-by-row
-#   - Takes ~30ms per row which makes it extremely slow
-#   - I'm sure there's a better way to use pandas for this though 
-#       so I kept it in for reference.
+    # %%
+    # (OPTIONAL) ALLOCATE STATE PREDICTIONS TO COUNTIES
 
-# ##-- Iterate through sample file re-populating row by row
-# dcounter = -1        # Counter for what day we are on
-# fip1     = fips[0]  # first fips; used to determine when day changes
-# for i in range(len(fips)):
-#     if fip1 == fips[i]:
-#         # increase counter since day has increased
-#         dcounter += 1
 
-#     # Find the fips instance in the input data
-#     try:
-#         fips_ind = data_fips.index(fips[i])
-#     except ValueError:
-#         continue
+    if isAllocCounties:
+        data = cf.alloc_counties(data, county_ref_fln)
 
-#     samp.at[i,'10':'90'] = quantiles[:,dcounter,fips_ind]
+    # %%
+    # CALCULATE QUANTILES and extract data chunks (split into fips and percentiles)
 
-# Alias samp to ouput_df for saving in next cell
-# output_df = samp
+    ##-- Extract pertinent information from sample file
+    perc_list = np.array(samp.columns[1:]).astype(int)
+    dates = [dat[:10] for dat in np.array(samp['id'])]
+    fips  = [dat[11:] for dat in np.array(samp['id'])]
 
-# %%
-# SAVE RESULTS
-output_df.to_csv(output_fln,index=False, float_format='%0.3f')
+    ##-- Check that enough dates were provided
+    Ndays = len(np.unique(np.array(dates)))   # use np.unique to remove repeated date instances
+    if Ndays < data.shape[1]:
+        # Input has too many days; assume both end on same day and thus crop input
+        data = data[:,-Ndays:,:]
+    elif Ndays > data.shape[1]:
+        raise ValueError('Data provided does not have enough dates (need more columns for each county')
+
+    ##-- Separate cube into FIPS layer and data layer
+    data_fips = np.array(['%d' %int(x) for x in data[0,0,:]])    # cast to string so fips datatypes match
+    data = data[1:,:,:]
+
+    ##-- Calculate quantiles
+    quantiles = np.percentile(data,perc_list,0)
+
+    # %%
+    # PERORM ANALYSIS (FASTER method for output file)
+    #   - Places the data into a temporary numpy matrix row-by-row
+    #   - Converts the matrix into a pandas dataframe afterwards
+    #   - This takes much less time than the method in the next cell
+    #   - Still not ideal though
+
+    ##-- Re-order data by FIPS for output
+    # Order FIPS
+    fips_ind = np.argsort(data_fips)
+    data_fips = list(data_fips[fips_ind])
+    # Reorder matrix
+    data = data[:,:,fips_ind]
+    quantiles = quantiles[:,:,fips_ind]
+
+    ##-- Create Final output matrix (with 0s)
+    output_data = np.zeros((len(fips),len(perc_list)))
+
+    ##-- Iterate through matrix rows populating them
+    dcounter = -1        # Counter for what day we are on
+    fip1     = fips[0]  # first fips; used to determine when day changes
+    for i in range(0,output_data.shape[0]):
+        if fip1 == fips[i]:
+            # increase counter since day has changed
+            dcounter += 1
+        
+        # Find the fips instance in the input data
+        try:
+            fips_ind = data_fips.index(fips[i])
+        except ValueError:
+            # Skip rows where we have no prediction for the given county
+            continue
+        
+        # Populate ouptput matrix
+        output_data[i,:] = quantiles[:,dcounter,fips_ind]
+        
+    # Create pandas dataframe from this matrix (easier for csv saving)
+    output_df = pd.DataFrame(output_data, columns=samp.columns[1:])
+    output_df.insert(0,column='id',value=samp['id'])
+
+    # %%
+    # PERFORM ANALYSIS (SLOW method for output file):
+    #   - Places the data into the sample dataframe row-by-row
+    #   - Takes ~30ms per row which makes it extremely slow
+    #   - I'm sure there's a better way to use pandas for this though 
+    #       so I kept it in for reference.
+
+    # ##-- Iterate through sample file re-populating row by row
+    # dcounter = -1        # Counter for what day we are on
+    # fip1     = fips[0]  # first fips; used to determine when day changes
+    # for i in range(len(fips)):
+    #     if fip1 == fips[i]:
+    #         # increase counter since day has increased
+    #         dcounter += 1
+
+    #     # Find the fips instance in the input data
+    #     try:
+    #         fips_ind = data_fips.index(fips[i])
+    #     except ValueError:
+    #         continue
+
+    #     samp.at[i,'10':'90'] = quantiles[:,dcounter,fips_ind]
+
+    # Alias samp to ouput_df for saving in next cell
+    # output_df = samp
+
+    # %%
+    # SAVE RESULTS
+    output_df.to_csv(output_fln,index=False, float_format='%0.3f')
 
 
 # %%
