@@ -3,7 +3,7 @@ import numpy as np
 import sys
 import traceback
 from tqdm.auto import tqdm
-import git
+#import git
 import os
 
 def get_date(x):
