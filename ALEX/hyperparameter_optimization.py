@@ -33,7 +33,7 @@ def test_error(HYPERPARAMS,train_til,test_from):
     
     # score = score_all_predictions('temp_processed.csv', date, model_date, mse=False, key='cases', bin_cutoffs=[20, 1000])
     score = evaluate_predictions('temp_processed.csv',test_from)
-    return score[0]
+    return score
 
 def f(HYPERPARAMS):
     train_til = '2020 04 24'
