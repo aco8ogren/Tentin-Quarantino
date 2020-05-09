@@ -801,5 +801,3 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),isSaveRes = False,sv_flnm_np='',
 
 
 # %%
-if __name__ == '__main__':
-    SEIIRQD_model(isMultiProc=True,workers=8,isSubSelect=True,just_train_these_fips=[36061],isPlotBokeh=True)

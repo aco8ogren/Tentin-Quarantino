@@ -3,8 +3,8 @@ import scipy.io as sio
 import numpy as np
 import os
 import pandas as pd
-import git
-import cube_formatter as cf
+# import git
+import Dan.cube_formatter as cf
 
 # %%
 def read_file(filename):
