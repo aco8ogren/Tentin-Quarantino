@@ -16,10 +16,20 @@ def JoshMeansClustering(fipsList,date,CritCases=50):
     Ogala={k:v for k,v in zip(['fips','long','lat'],[46102,-102.821318,43.352275])}
     geoDF=geoDF.append(Ogala,ignore_index=True)
     df=pd.merge(covidDF[['fips','deaths','date']],geoDF,how='left',on='fips')
+    
 
     df=df[df.date==date].drop(columns='date')
-    df=df[df.fips.isin(fipsList)].sort_values(by=['long','lat']).reset_index(drop=True)
+    df=df[df.fips.isin(fipsList)]
+    
+    AL_HA=df[df.long<-128]
+    df=df[df.long>=-128]
+    AL_HA['cluster']=np.nan*np.ones(len(AL_HA))
+    AL_HA.loc[AL_HA.lat>40,'cluster']=-1
+    AL_HA.loc[AL_HA.lat<=40,'cluster']=-2
+
+    df=df.sort_values(by=['long','lat']).reset_index(drop=True)
     df['LongDeaths']=df.deaths.cumsum()
+
 
     TargetNumClusters=df.deaths.sum()/CritCases
     LongRes=((TargetNumClusters)**.5)
@@ -57,6 +67,9 @@ def JoshMeansClustering(fipsList,date,CritCases=50):
         DFs[i]=DF
 
     ClusterDF=pd.concat(DFs)[['fips','cluster','long','lat','deaths']]
+    AL_HA.loc[AL_HA.cluster==-1,'cluster']=ClusterDF.cluster.max()+1
+    AL_HA.loc[AL_HA.cluster==-2,'cluster']=ClusterDF.cluster.max()+2
+    ClusterDF=pd.concat((ClusterDF,AL_HA))[['fips','cluster','long','lat','deaths']]
     deaths=ClusterDF[['deaths','cluster']].groupby('cluster').sum().rename(columns={'deaths':'clusterDeaths'})
     ClusterDF=ClusterDF.merge(deaths,left_on='cluster',right_index=True)
-    return ClusterDF
+    return ClusterDF,AL_HA
