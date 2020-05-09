@@ -41,22 +41,23 @@ def f(HYPERPARAMS):
 
 
 # %%
-res = gp_minimize(f,                  # the function to minimize
-                                      # the bounds on each dimension of x
-                  [
-                        (0,.1),       # p_err_frac: Parameter error estimate fraction (i.e. .05 --> 5% error)
-                        (50,60),             # D_THRES: If a state does not have more than this number of deaths by train_til, we do not make predictions (or, we make cluster predictions)
-                        (5,15),             # death_weight: factor by which to weigh error for death data more than symptomatic infected data during SEIIRQD optimization
-                        (0,.5)            # alpha: the alpha from LeakyReLU determines how much to penalize the SEIIRQD objective function for over predicting the symptomatic infected
-                  ],      
-                  acq_func="EI",      # the acquisition function
-                  n_calls=5,         # the number of evaluations of f
-                  n_random_starts=1,  # the number of random initialization points
-                  noise=0.1**2,       # the noise level (optional)
-                  random_state=1234)   # the random seed
+if __name__ == '__main__':
+    res = gp_minimize(f,                  # the function to minimize
+                                        # the bounds on each dimension of x
+                    [
+                            (0,.1),       # p_err_frac: Parameter error estimate fraction (i.e. .05 --> 5% error)
+                            (50,60),             # D_THRES: If a state does not have more than this number of deaths by train_til, we do not make predictions (or, we make cluster predictions)
+                            (5,15),             # death_weight: factor by which to weigh error for death data more than symptomatic infected data during SEIIRQD optimization
+                            (0,.5)            # alpha: the alpha from LeakyReLU determines how much to penalize the SEIIRQD objective function for over predicting the symptomatic infected
+                    ],      
+                    acq_func="EI",      # the acquisition function
+                    n_calls=5,         # the number of evaluations of f
+                    n_random_starts=1,  # the number of random initialization points
+                    noise=0.1**2,       # the noise level (optional)
+                    random_state=1234)   # the random seed
 
 # %%
-plot_convergence(res)
+    plot_convergence(res)
 #%%
 
 
