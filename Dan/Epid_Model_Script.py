@@ -44,7 +44,7 @@ if __name__ == '__main__':
     #-- Filtering parameters
     # Threshold of deaths at and below which a COUNTY will not be trained on
         # Filters which COUNTIES are looped over in optimization/minimization loop
-    D_THRES = 50
+    D_THRES = 97
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
         # OR: leave as None to train until the latest data for which there is data
@@ -103,14 +103,13 @@ if __name__ == '__main__':
     verbosity = 1
 
     #-- Set hyperparameters
-    # NOTE/TODO: Alex to explain what these are
-    p_err_frac = 0.05   
-    death_weight = 10
-    alpha = 0.2
+    p_err_frac = 0.0995764604328379   # The size of the uncertainty that we have on our optimal SEIIRQD parameters. This affects the size of our quantile differences.
+    death_weight = 5   # The weight with which we multiply the death error in SEIIRQD optimization. The death data is trusted death_weight times more than the symptomatic infected data.
+    alpha = 0.00341564933361549         # alpha of the LeakyReLU for modifying the symptomatic infected error. i.e. if alpha = 0 ==> no penalty for overestimating Sympt Inf. alpha = 1 ==> as much penalty for overestimating as underestimating.
 
 # %% Setup Formatter run
 
-    #-- Flag to choose whether to format a model .mat
+    #-- Flag to choose whether to format a model's .mat output file
     isFormat = True
 
     #-- Define control parameters

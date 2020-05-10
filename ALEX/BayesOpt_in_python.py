@@ -4,6 +4,7 @@
 from skopt import gp_minimize
 from skopt.plots import plot_convergence
 import numpy as np
+import matplotlib.pyplot as plt
 
 # %%
 def f(x):
@@ -23,8 +24,10 @@ res = gp_minimize(f,                  # the function to minimize
                   n_calls=15,         # the number of evaluations of f
                   n_random_starts=5,  # the number of random initialization points
                   noise=0.1**2,       # the noise level (optional)
-                  random_state=1234)   # the random seed
+                  random_state=1234,  # the random seed
+                  verbose = True)   
 
 # %%
-plot_convergence(res)
+fig = plot_convergence(res)
+fig.savefig("bayesian_optimization_convergence.pdf")
 

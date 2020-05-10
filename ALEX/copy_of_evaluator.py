@@ -31,7 +31,7 @@ def evaluate(test_df, user_df):
         quantile = int(column) / 100.0
         total_loss += pinball_loss(join_df['deaths'].values, join_df[column].values, quantile) / 9.0
     return total_loss
-def evaluate_predictions(csv_to_score,start_date, end_date=None):
+def evaluate_predictions(csv_to_score,start_date, end_date=None,only_score_these_fips = None):
     # Setup paths
     # repo = git.Repo("./", search_parent_directories=True)
     # homedir = repo.working_dir
@@ -83,6 +83,8 @@ def evaluate_predictions(csv_to_score,start_date, end_date=None):
     covid_active_fips = prev_active_fips.intersection(all_fips).intersection(curr_active_fips) - disabled_fips
     inactive_fips = all_fips - prev_active_fips - curr_active_fips - disabled_fips
     new_active_fips = (curr_active_fips - prev_active_fips).intersection(all_fips) - disabled_fips
+    if only_score_these_fips is not None: # This gives us the option to only grade a certain set of fips.
+        new_active_fips = only_score_these_fips
 
     # Create a DataFrame of all 0's for inactive fips by getting those from sample submission.
     inactive_df = sample_submission.set_index('fips')[['id','50']].loc[inactive_fips]
