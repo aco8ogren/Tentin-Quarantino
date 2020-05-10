@@ -8,7 +8,7 @@ cwd=repo.working_dir
 os.chdir(cwd)
 
 
-def JoshMeansClustering(fipsList,date,CritCases=50):
+def JoshMeansClustering(fipsList,date,CritCases=50,Fpath=None):
     covidDF=pd.read_csv('data/us/covid/nyt_us_counties.csv')
     covidDF['date']=pd.to_datetime(covidDF['date'])
     if date is not None:
@@ -79,4 +79,7 @@ def JoshMeansClustering(fipsList,date,CritCases=50):
     ClusterDF['state']=['ClusterState']*len(ClusterDF)
     ClusterDF['county']=['cluster%i'%i for i in ClusterDF.cluster.values]
     ClusterDF['cluster']=ClusterDF['cluster'].astype(int)
+
+    if Fpath is not None:
+        ClusterDF.to_csv(Fpath)
     return ClusterDF
