@@ -53,39 +53,39 @@ def select_region(df, region, min_deaths=50,mobility = False):
 #    It is currently unclear how the TA's obtained this conversion (res.jac --> std(params))
 
 # return params, 1 standard deviation errors
-def get_errors(res, p0):
-    p0 = np.array(p0)
-    ysize = len(res.fun)
-    cost = 2 * res.cost  # res.cost is half sum of squares!
-    popt = res.x
-    # Do Moore-Penrose inverse discarding zero singular values.
-    _, s, VT = svd(res.jac, full_matrices=False)
-    threshold = np.finfo(float).eps * max(res.jac.shape) * s[0]
-    s = s[s > threshold]
-    VT = VT[:s.size]
-    pcov = np.dot(VT.T / s**2, VT)
+# def get_errors(res, p0):
+#     p0 = np.array(p0)
+#     ysize = len(res.fun)
+#     cost = 2 * res.cost  # res.cost is half sum of squares!
+#     popt = res.x
+#     # Do Moore-Penrose inverse discarding zero singular values.
+#     _, s, VT = svd(res.jac, full_matrices=False)
+#     threshold = np.finfo(float).eps * max(res.jac.shape) * s[0]
+#     s = s[s > threshold]
+#     VT = VT[:s.size]
+#     pcov = np.dot(VT.T / s**2, VT)
 
-    warn_cov = False
-    absolute_sigma = False
-    if pcov is None:
-        # indeterminate covariance
-        pcov = zeros((len(popt), len(popt)), dtype=float)
-        pcov.fill(inf)
-        warn_cov = True
-    elif not absolute_sigma:
-        if ysize > p0.size:
-            s_sq = cost / (ysize - p0.size)
-            pcov = pcov * s_sq
-        else:
-            pcov.fill(inf)
-            warn_cov = True
+#     warn_cov = False
+#     absolute_sigma = False
+#     if pcov is None:
+#         # indeterminate covariance
+#         pcov = zeros((len(popt), len(popt)), dtype=float)
+#         pcov.fill(inf)
+#         warn_cov = True
+#     elif not absolute_sigma:
+#         if ysize > p0.size:
+#             s_sq = cost / (ysize - p0.size)
+#             pcov = pcov * s_sq
+#         else:
+#             pcov.fill(inf)
+#             warn_cov = True
 
-    if warn_cov:
-        print('cannot estimate variance')
-        return None
+#     if warn_cov:
+#         print('cannot estimate variance')
+#         return None
     
-    perr = np.sqrt(np.diag(pcov))
-    return perr
+#     perr = np.sqrt(np.diag(pcov))
+#     return perr
 
 # %% [markdown]
 ## MODEL 3 of 3: $\mathbf{SEI_A I_S R}$ with empirical quarantine
@@ -221,6 +221,7 @@ def fit_leastsq_z(params, data, mobility_data,HYPERPARAMS):
     symptomatic_infected_errors = np.multiply(weight_errors,-LeakyReLU(Idata,I_S,alpha=HYPERPARAMS[3]))
 
     error = np.concatenate((death_errors, symptomatic_infected_errors))
+    error = error/death_weight # This change was made on May 10th 2020
     return error
 
 def LeakyReLU(pred,true,alpha=0):
@@ -588,7 +589,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
             bokeh.io.show(p)
 
 
-    # %%
+    # -%%
     #-- Remove days beyond our training limit day
     if train_til is not None:
         train_til = int((train_til-global_dayzero)/np.timedelta64(1,'D'))
@@ -803,5 +804,15 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         savemat(sv_flnm_mat, savedict)
     print(res[:2,100,:10]) # list the fips and the deaths on day 100 for the first 10 counties in the list of trained counties
 
+
+# %%
+if __name__ == '__main__':
+    SEIIRQD_model(isSaveRes=True,sv_flnm_np='Dan/TestOnAlex.npy', sv_flnm_mat='Dan/TestOnAlex.mat', isMultiProc=True, workers=20, train_til='2020 04 24', train_Dfrom=7,
+                    min_train_days=5, isSubSelect=True, 
+                    just_train_these_fips=[36061, 36059, 26163, 17031, 36103, 36119, 34013, 34003, 
+                                6037,  9001,  34017, 26125, 25017, 34039, 26099, 9003],
+                    isConstInitCond=False, init_vec=(4.901,0.02, 0.114))
+
+                 
 
 # %%

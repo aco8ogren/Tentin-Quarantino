@@ -29,7 +29,7 @@ if __name__ == '__main__':
     isSaveRes = True
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
-    sv_flnm_mat = 'Dan\\PracticeOutputs\\TestScript.mat'
+    sv_flnm_mat = 'Alex\\PracticeOutputs\\IsThisRealLife_SmartInitCondActive.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
@@ -37,13 +37,13 @@ if __name__ == '__main__':
     # Flag to choose whether multiprocessing should be used
     isMultiProc = True
     # Number of cores to use (logical cores, not physical cores)
-    workers = 8
+    workers = 20
 
 
     #-- Filtering parameters
     # Threshold of deaths at and below which a COUNTY will not be trained on
         # Filters which COUNTIES are looped over in optimization/minimization loop
-    D_THRES = 50
+    D_THRES = 97
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
         # OR: leave as None to train until the latest data for which there is data
@@ -62,7 +62,7 @@ if __name__ == '__main__':
 
     #-- Sub-select counties to train on
     # Flag to choose whether to sub-select
-    isSubSelect = True
+    isSubSelect = False
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
     just_train_these_fips = [36061, 1073, 56035, 6037] 
@@ -71,7 +71,9 @@ if __name__ == '__main__':
     #-- Method used for choosing initial conditions
         # True: Use the same vector (hardcoded) as the initial conditions for all counties
         # False: Calculate unique initial conditions for each county 
-    isConstInitCond = True
+    isConstInitCond = False
+    # If isConstInitCond is true
+    init_vec=(4.901,0.02, 0.114)
 
 
     #-- When not multiprocessing, enable bokeh plotting (since won't cause issue)
@@ -81,15 +83,14 @@ if __name__ == '__main__':
 
 
     #-- Set hyperparameters
-    # NOTE/TODO: Alex to explain what these are
-    p_err_frac = 0.05   
-    death_weight = 10
-    alpha = 0.2
+    p_err_frac = 0.0995764604328379   # The size of the uncertainty that we have on our optimal SEIIRQD parameters. This affects the size of our quantile differences.
+    death_weight = 5   # The weight with which we multiply the death error in SEIIRQD optimization. The death data is trusted death_weight times more than the symptomatic infected data.
+    alpha = 0.00341564933361549         # alpha of the LeakyReLU for modifying the symptomatic infected error. i.e. if alpha = 0 ==> no penalty for overestimating Sympt Inf. alpha = 1 ==> as much penalty for overestimating as underestimating.
 
 
 # %% Setup Formatter run
 
-    #-- Flag to choose whether to format a model .mat
+    #-- Flag to choose whether to format a model's .mat output file
     isFormat = True
 
     #-- Define control parameters
@@ -100,7 +101,7 @@ if __name__ == '__main__':
 
     #-- When a model was not trained, provide filename to format
         # if a model was trained, that filename will automatically be used
-    format_flnm_in = 'Dan/PracticeOutputs/Blah.mat'
+    format_flnm_in = 'Dan/apple.mat'
 
     #-- Provide filename for output file (if isFormat=True, we'll always)
     format_flnm_out = os.path.splitext(format_flnm_in)[0] + '.csv'
@@ -114,7 +115,7 @@ if __name__ == '__main__':
 
     #-- When model was not formatted, provide a filename to evaluate
         # if a model was trained and formatted, that filename will automatically be used
-    eval_flnm_in = 'Dan/PracticeOutputs/Foo.csv'
+    eval_flnm_in = 'Dan/PracticeOutputs/orange.csv'
 
     #-- Day from which we should evaluate 
         # in format 'YYYY-MM-DD'
@@ -162,7 +163,8 @@ if __name__ == '__main__':
                         isSubSelect = isSubSelect,
                         just_train_these_fips = just_train_these_fips,
                         isPlotBokeh = isPlotBokeh, 
-                        isConstInitCond = isConstInitCond)
+                        isConstInitCond = isConstInitCond, 
+                        init_vec =  init_vec)
 
         print('*** Model results saved to:\n    %s\n    %s'%(sv_flnm_mat, sv_flnm_np))
 

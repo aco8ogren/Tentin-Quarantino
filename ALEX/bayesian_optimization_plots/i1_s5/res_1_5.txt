@@ -1,0 +1,104 @@
+
+#hyperparameter_optimization
+# %%
+import os
+import sys
+HomeDIR='Tentin-Quarantino'
+wd=os.path.dirname(os.path.realpath(__file__))
+
+DIR=wd[:wd.find(HomeDIR)+len(HomeDIR)]
+os.chdir(DIR)
+sys.path.append(os.getcwd())
+
+homedir = DIR
+datadir = f"{homedir}"
+
+from skopt import gp_minimize
+from skopt.plots import plot_convergence
+import numpy as np
+from Dan.format_sub import format_file_for_evaluation
+from Dan.EpidModel_parallelized_Counties import SEIIRQD_model
+from Alex.copy_of_evaluator import evaluate_predictions
+
+# %%
+def test_error(HYPERPARAMS,train_til,test_from,test_til): 
+    # Given a set of hyperparameters and days to train from and until,
+    # this function trains a model, then evaluates and returns pinball loss
+    SEIIRQD_model(HYPERPARAMS = HYPERPARAMS,isSaveRes = True,sv_flnm_np='temp_raw.npy',
+                    sv_flnm_mat = 'temp_raw.mat',isMultiProc = True,workers = 20,train_til = train_til,
+                    train_Dfrom = 7,min_train_days = 5,isSubSelect = False, # CHANGE isSubSelect TO FALSE WHEN DONE DEBUGGING! New York is 36061
+                    just_train_these_fips = None,isPlotBokeh = False)
+    format_file_for_evaluation('temp_raw.mat','temp_processed.csv',isAllocCounties = False,isComputeDaily = True)
+    
+    # score = score_all_predictions('temp_processed.csv', date, model_date, mse=False, key='cases', bin_cutoffs=[20, 1000])
+    score = evaluate_predictions('temp_processed.csv',test_from,end_date = test_til)
+    return score
+
+def f(HYPERPARAMS):
+    train_til = '2020 04 24'
+    test_from = '2020-04-24'
+    test_til  = '2020-05-05'
+    return test_error(HYPERPARAMS,train_til,test_from,test_til)
+
+
+# %%
+if __name__ == '__main__':
+    res = gp_minimize(f,                  # the function to minimize
+                                        # the bounds on each dimension of x
+                    [
+                            (0,.1),       # p_err_frac: Parameter error estimate fraction (i.e. .05 --> 5% error)
+                            (30,100),             # D_THRES: If a state does not have more than this number of deaths by train_til, we do not make predictions (or, we make cluster predictions)
+                            (5,15),             # death_weight: factor by which to weigh error for death data more than symptomatic infected data during SEIIRQD optimization
+                            (0,.5)            # alpha: the alpha from LeakyReLU determines how much to penalize the SEIIRQD objective function for over predicting the symptomatic infected
+                    ],      
+                    acq_func="EI",      # the acquisition function
+                    n_calls=5,          # the number of evaluations of f
+                    n_random_starts=1,  # the number of random initialization points
+                    noise=0.1**2,       # the noise level (optional)
+                    random_state=1234,  # the random seed
+                    verbose = True)   
+# %%
+    fig = plot_convergence(res)
+    fig.figure.savefig("bayesian_optimization_convergence.pdf")
+    print(res)
+#%%
+
+res from snowflake 
+         fun: 0.16734749571942406
+    func_vals: array([0.27611199, 0.1754287 , 0.25233245, 0.1673475 , 0.17692694])
+       models: [GaussianProcessRegressor(alpha=1e-10, copy_X_train=True,
+                         kernel=1**2 * Matern(length_scale=[1, 1, 1, 1], nu=2.5) + WhiteKernel(noise_level=0.01),
+                         n_restarts_optimizer=2, noise=0.010000000000000002,
+                         normalize_y=True, optimizer='fmin_l_bfgs_b',
+                         random_state=822569775), GaussianProcessRegressor(alpha=1e-10, copy_X_train=True,
+                         kernel=1**2 * Matern(length_scale=[1, 1, 1, 1], nu=2.5) + WhiteKernel(noise_level=0.01),
+                         n_restarts_optimizer=2, noise=0.010000000000000002,
+                         normalize_y=True, optimizer='fmin_l_bfgs_b',
+                         random_state=822569775), GaussianProcessRegressor(alpha=1e-10, copy_X_train=True,
+                         kernel=1**2 * Matern(length_scale=[1, 1, 1, 1], nu=2.5) + WhiteKernel(noise_level=0.01),
+                         n_restarts_optimizer=2, noise=0.010000000000000002,
+                         normalize_y=True, optimizer='fmin_l_bfgs_b',
+                         random_state=822569775), GaussianProcessRegressor(alpha=1e-10, copy_X_train=True,
+                         kernel=1**2 * Matern(length_scale=[1, 1, 1, 1], nu=2.5) + WhiteKernel(noise_level=0.01),
+                         n_restarts_optimizer=2, noise=0.010000000000000002,
+                         normalize_y=True, optimizer='fmin_l_bfgs_b',
+                         random_state=822569775), GaussianProcessRegressor(alpha=1e-10, copy_X_train=True,
+                         kernel=1**2 * Matern(length_scale=[1, 1, 1, 1], nu=2.5) + WhiteKernel(noise_level=0.01),
+                         n_restarts_optimizer=2, noise=0.010000000000000002,
+                         normalize_y=True, optimizer='fmin_l_bfgs_b',
+                         random_state=822569775)]
+ random_state: RandomState(MT19937) at 0x29A52255598
+        space: Space([Real(low=0, high=0.1, prior='uniform', transform='normalize'),
+       Integer(low=30, high=100, prior='uniform', transform='normalize'),
+       Integer(low=5, high=15, prior='uniform', transform='normalize'),
+       Real(low=0, high=0.5, prior='uniform', transform='normalize')])
+        specs: {'args': {'func': <function f at 0x0000029A52B3ECA8>, 'dimensions': Space([Real(low=0, high=0.1, prior='uniform', transform='normalize'),
+       Integer(low=30, high=100, prior='uniform', transform='normalize'),
+       Integer(low=5, high=15, prior='uniform', transform='normalize'),
+       Real(low=0, high=0.5, prior='uniform', transform='normalize')]), 'base_estimator': GaussianProcessRegressor(alpha=1e-10, copy_X_train=True,
+                         kernel=1**2 * Matern(length_scale=[1, 1, 1, 1], nu=2.5),
+                         n_restarts_optimizer=2, noise=0.010000000000000002,
+                         normalize_y=True, optimizer='fmin_l_bfgs_b',
+                         random_state=822569775), 'n_calls': 5, 'n_random_starts': 1, 'acq_func': 'EI', 'acq_optimizer': 'auto', 'x0': None, 'y0': None, 'random_state': RandomState(MT19937) at 0x29A52255598, 'verbose': True, 'callback': None, 'n_points': 10000, 'n_restarts_optimizer': 5, 'xi': 0.01, 'kappa': 1.96, 'n_jobs': 1, 'model_queue_size': None}, 'function': 'base_minimize'}    
+            x: [0.09608572915734925, 97, 6, 0.010223310012715483]
+      x_iters: [[0.04976636664726494, 87, 11, 0.3856799594312006], [0.1, 30, 5, 0.0], [0.0015976492708376982, 31, 15, 0.47260075244615124], [0.09608572915734925, 97, 6, 0.010223310012715483], [0.09932834113007774, 93, 5, 0.0]]
