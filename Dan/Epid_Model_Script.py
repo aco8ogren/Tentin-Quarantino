@@ -1,21 +1,21 @@
 # %% Imports and path setup
 
-import os
-import sys
-
-HomeDIR='Tentin-Quarantino'
-wd=os.path.dirname(os.path.realpath(__file__))
-DIR=wd[:wd.find(HomeDIR)+len(HomeDIR)]
-os.chdir(DIR)
-
-sys.path.append(os.getcwd())
-
-from Dan.EpidModel_parallelized_Counties import SEIIRQD_model
-from Alex.copy_of_evaluator import evaluate_predictions
-from Dan.format_sub import format_file_for_evaluation
-
 # NOTE: Apparently we still need to shield. Can't say I understand why...
 if __name__ == '__main__':
+    import os
+    import sys
+
+    HomeDIR='Tentin-Quarantino'
+    wd=os.path.dirname(os.path.realpath(__file__))
+    DIR=wd[:wd.find(HomeDIR)+len(HomeDIR)]
+    os.chdir(DIR)
+
+    sys.path.append(os.getcwd())
+
+    from Dan.EpidModel_parallelized_Counties import SEIIRQD_model
+    from Alex.copy_of_evaluator import evaluate_predictions
+    from Dan.format_sub import format_file_for_evaluation
+
 
 # %% Setup model training run
 
@@ -29,15 +29,16 @@ if __name__ == '__main__':
     isSaveRes = True
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
-    sv_flnm_mat = 'Alex\\PracticeOutputs\\IsThisRealLife_SmartInitCondActive.mat'
+        # NOTE: when clustering, the .mat filename will be used for saving the cluster file
+    sv_flnm_mat = 'Dan\\PracticeOutputs\\TrainFull.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
     #-- Multiprocessing settings
     # Flag to choose whether multiprocessing should be used
-    isMultiProc = True
+    isMultiProc = False
     # Number of cores to use (logical cores, not physical cores)
-    workers = 20
+    workers = 10
 
 
     #-- Filtering parameters
@@ -60,20 +61,29 @@ if __name__ == '__main__':
     min_train_days = 5
 
 
+    #-- Clustering settings
+    # Enable clustering: combines the low-death counties into clusters for training
+        # When False, the code will run as it used to
+    isCluster = True
+
+
     #-- Sub-select counties to train on
     # Flag to choose whether to sub-select
     isSubSelect = False
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
-    just_train_these_fips = [36061, 1073, 56035, 6037] 
+    just_train_these_fips = [36061, 36059, 26163, 17031, 36103, 36119, 34013, 34003, 
+                             6037,  9001,  34017, 26125, 25017, 34039, 26099, 9003] 
 
 
     #-- Method used for choosing initial conditions
         # True: Use the same vector (hardcoded) as the initial conditions for all counties
         # False: Calculate unique initial conditions for each county 
     isConstInitCond = False
-    # If isConstInitCond is true
-    init_vec=(4.901,0.02, 0.114)
+    # When calculating unique conditions for each county, define fudge factors:
+    init_vec = (4.901,          # T : Is = T*cases      Old: 3.933
+                0.020,          # R : Ia = R*Itot       Old: 0.862
+                0.114)          # F : E  = F*Is         Old: 3.014
 
 
     #-- When not multiprocessing, enable bokeh plotting (since won't cause issue)
@@ -82,11 +92,20 @@ if __name__ == '__main__':
     isPlotBokeh     = False
 
 
+    #-- Set verbosity for printing
+    #-- Verbosity explanation:
+    # There are multiple levels of verbosity based on the provided integer
+    #   0 :     No print statements are executed
+    #   1 :     Only total time is printed
+    #   2 :     Only prints in main function are shown (those in par_fun are suppressed)
+    #   3 :     (DEFAULT) All print statements are executed
+    # *** Error-related prints are always printed
+    verbosity = 1
+
     #-- Set hyperparameters
     p_err_frac = 0.0995764604328379   # The size of the uncertainty that we have on our optimal SEIIRQD parameters. This affects the size of our quantile differences.
     death_weight = 5   # The weight with which we multiply the death error in SEIIRQD optimization. The death data is trusted death_weight times more than the symptomatic infected data.
     alpha = 0.00341564933361549         # alpha of the LeakyReLU for modifying the symptomatic infected error. i.e. if alpha = 0 ==> no penalty for overestimating Sympt Inf. alpha = 1 ==> as much penalty for overestimating as underestimating.
-
 
 # %% Setup Formatter run
 
@@ -95,15 +114,15 @@ if __name__ == '__main__':
 
     #-- Define control parameters
     # Flag to distribue state deaths amongst counties
-    isAllocCounties = False
+    isAllocCounties = True
     # Flag to translate cummulative data to daily counts
     isComputeDaily = True
 
     #-- When a model was not trained, provide filename to format
         # if a model was trained, that filename will automatically be used
-    format_flnm_in = 'Dan/apple.mat'
+    format_flnm_in = 'Dan/PracticeOutputs/TestClustering.mat'
 
-    #-- Provide filename for output file (if isFormat=True, we'll always)
+    #-- Provide filename for output file 
     format_flnm_out = os.path.splitext(format_flnm_in)[0] + '.csv'
 
 
@@ -114,8 +133,8 @@ if __name__ == '__main__':
     isEval = True
 
     #-- When model was not formatted, provide a filename to evaluate
-        # if a model was trained and formatted, that filename will automatically be used
-    eval_flnm_in = 'Dan/PracticeOutputs/orange.csv'
+        # if a model was formatted, that filename will automatically be used
+    eval_flnm_in = 'Dan/PracticeOutputs/TestClustering.csv'
 
     #-- Day from which we should evaluate 
         # in format 'YYYY-MM-DD'
@@ -126,6 +145,30 @@ if __name__ == '__main__':
         # Set to None to evaluate until most recent day of data
     eval_end_day = '2020-05-05'
 
+
+# %% (OPTIONAL) Define parameters for init conditional optimization
+
+    # @Alex, @Josh: YOU CAN PROBABLY IGNORE THIS SECTION
+    # In general, IGNORE this unles you want to repeat the optimizations that Dan is doing
+
+    # This section controls whether the initical conditions are optimized over
+        # This is a hyper parameter optimization BUT different from the real one
+        # that Alex is doing. 
+
+    #-- Flag to do hyperparameter optimization over the init cond. fudge factors
+    isRunInitConHyper = False
+
+    #-- Bounds for the search
+    init_bd = [(0.3,5), (0.01,1), (0.001,20)]
+
+    #-- Other settings for hyperparam run
+    acq_func = "EI"
+    n_calls = 15 
+    n_random_starts = 5 
+    x0 = init_vec
+    noise = 0.1**2
+    random_state = 1234
+    HypParamVerbose = True
 
 # %% Prepare for calls
 
@@ -147,49 +190,95 @@ if __name__ == '__main__':
         eval_flnm_in = format_flnm_out
 
 
-# %% Run sections as needed
+# %% Define function that actually runs the code
+# Needed as a function for the optional hyperparameter optimization 
 
-    if isTrainModel:
-        print('\n\n------ Training Model ------\n')
-        SEIIRQD_model(HYPERPARAMS = (p_err_frac,D_THRES,death_weight,alpha),
-                        isSaveRes = isSaveRes,
-                        sv_flnm_np=sv_flnm_np,
-                        sv_flnm_mat = sv_flnm_mat,
-                        isMultiProc = isMultiProc,
-                        workers = workers,
-                        train_til = train_til,
-                        train_Dfrom = train_Dfrom,
-                        min_train_days = min_train_days,
-                        isSubSelect = isSubSelect,
-                        just_train_these_fips = just_train_these_fips,
-                        isPlotBokeh = isPlotBokeh, 
-                        isConstInitCond = isConstInitCond, 
-                        init_vec =  init_vec)
+    def runFull(init_vec):
+        if isTrainModel:
+            print('\n\n------ Training Model ------')
+            SEIIRQD_model(HYPERPARAMS = (p_err_frac,D_THRES,death_weight,alpha),
+                            isSaveRes = isSaveRes,
+                            sv_flnm_np=sv_flnm_np,
+                            sv_flnm_mat = sv_flnm_mat,
+                            isMultiProc = isMultiProc,
+                            workers = workers,
+                            train_til = train_til,
+                            train_Dfrom = train_Dfrom,
+                            min_train_days = min_train_days,
+                            isSubSelect = isSubSelect,
+                            just_train_these_fips = just_train_these_fips,
+                            isPlotBokeh = isPlotBokeh, 
+                            isConstInitCond = isConstInitCond,
+                            init_vec = init_vec,
+                            verbosity = verbosity,
+                            isCluster = isCluster)
+            if isSaveRes and not isRunInitConHyper:
+                print('*** Model results saved to:\n    %s\n    %s'%(sv_flnm_mat, sv_flnm_np))
+                
 
-        print('*** Model results saved to:\n    %s\n    %s'%(sv_flnm_mat, sv_flnm_np))
 
+        if isFormat:
+            print('\n------ Formatting File ------')
 
-    if isFormat:
-        print('\n\n------ Formatting File ------')
+            if not isRunInitConHyper:
+                print('*** Input filename:\n    %s'%format_flnm_in)
 
-        print('*** Input filename:\n    %s'%format_flnm_in)
+            format_file_for_evaluation(format_flnm_in,
+                                        format_flnm_out,
+                                        isAllocCounties = isAllocCounties,
+                                        isComputeDaily = isComputeDaily)
 
-        format_file_for_evaluation(format_flnm_in,
-                                    format_flnm_out,
-                                    isAllocCounties = isAllocCounties,
-                                    isComputeDaily = isComputeDaily)
+            if not isRunInitConHyper:
+                print('*** Formatted file:\n    %s'%format_flnm_out)
+            
 
-        print('*** Formatted file:\n    %s'%format_flnm_out)
+        if isEval:
+            print('\n------ Evaluating File ------')
+
+            if not isRunInitConHyper:
+                print('*** Input filename:\n    %s'%eval_flnm_in)
+                print('\n\n')
+            
+            score = evaluate_predictions(eval_flnm_in,
+                                            eval_start_day,
+                                            end_date = eval_end_day)
+            return score
+
         
 
-    if isEval:
-        print('\n\n------ Evaluating File ------')
+# %% Run 
 
-        print('*** Input filename:\n    %s'%eval_flnm_in)
+    if isRunInitConHyper:
+            
+        from skopt import gp_minimize
+        from skopt.plots import plot_convergence
 
-        print('\n\n')
-        score = evaluate_predictions(eval_flnm_in,
-                                        eval_start_day,
-                                        end_date = eval_end_day)
+        # Overwrite parameters necessary for optimization to run
+        isConstInitCond = False
+        isTrainModel = True
+        isSaveRes = True
+        isFormat = True
+        isEval = True
+
+        # Perform hyperparam optimization over initial conditions
+        res = gp_minimize(runFull, init_bd, 
+                          acq_func = acq_func,
+                          n_calls = n_calls,
+                          n_random_starts = n_random_starts, 
+                          x0 = init_vec,
+                          noise = noise, 
+                          random_state = random_state, 
+                          verbose = HypParamVerbose)
+        print()
+        print(res.x)
+        print()
+        print(res.fun)
+        print()
+        print(res)
+        plot_convergence(res)
+    else:
+        # Perform a regular run of the code
+        runFull(init_vec)
+
 
                 

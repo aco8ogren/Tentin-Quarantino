@@ -8,10 +8,14 @@ cwd=repo.working_dir
 os.chdir(cwd)
 
 
-def JoshMeansClustering(fipsList,date,CritCases=50):
-    date=pd.to_datetime(date)
+def JoshMeansClustering(fipsList,date,CritCases=50,Fpath=None):
     covidDF=pd.read_csv('data/us/covid/nyt_us_counties.csv')
     covidDF['date']=pd.to_datetime(covidDF['date'])
+    if date is not None:
+        date=pd.to_datetime(date)-np.timedelta64(1,'D')
+    else:
+        date=covidDF.date.max()
+    
     geoDF=pd.read_csv(r'Josh\Processing\Processed Data\GeoData.csv')
     Ogala={k:v for k,v in zip(['fips','long','lat'],[46102,-102.821318,43.352275])}
     geoDF=geoDF.append(Ogala,ignore_index=True)
@@ -50,11 +54,11 @@ def JoshMeansClustering(fipsList,date,CritCases=50):
     Q=0
     for i,DF in enumerate(DFs):
         # res=LatRes[i]
-        DF.sort_values(by=['lat'],inplace=True)
+        DF= DF.sort_values(by=['lat'])
         # print(DF)
-        DF['LatDeaths']=DF.deaths.cumsum()
-        DF['LatQDeaths']=DF['LatDeaths']
-        DF['cluster']=np.nan*np.ones(len(DF))
+        DF.loc[:,'LatDeaths']=DF.deaths.cumsum()
+        DF.loc[:,'LatQDeaths']=DF['LatDeaths']
+        DF.loc[:,'cluster']=np.nan*np.ones(len(DF))
         boundaries=[0]
        
         while DF.iloc[-1].LatQDeaths>CritCases:
@@ -72,4 +76,12 @@ def JoshMeansClustering(fipsList,date,CritCases=50):
     ClusterDF=pd.concat((ClusterDF,AL_HA))[['fips','cluster','long','lat','deaths']]
     deaths=ClusterDF[['deaths','cluster']].groupby('cluster').sum().rename(columns={'deaths':'clusterDeaths'})
     ClusterDF=ClusterDF.merge(deaths,left_on='cluster',right_index=True)
-    return ClusterDF,AL_HA
+    ClusterDF['state']=['ClusterState']*len(ClusterDF)
+    ClusterDF['county']=['cluster%i'%i for i in ClusterDF.cluster.values]
+    ClusterDF['cluster']=ClusterDF['cluster'].astype(int)
+
+    ClusterDF.loc[:,'cluster'] += 1
+
+    if Fpath is not None:
+        ClusterDF.to_csv(Fpath)
+    return ClusterDF

@@ -193,3 +193,117 @@ def alloc_counties(data, county_ref_fln, alloc_day=None):
 
     return data
 
+def alloc_fromCluster(data, cluster_ref_fln):
+    """
+    # Function to allocate state-wide deaths amongst counties
+    # 
+    # Arguments:
+    #   - data      cube with daily death counts
+    #                 format for input cube:
+    #                 row=sample, col=date, pane=cluster
+    #                 * NOTE: can be mix of counties and clusters
+    #   
+    #   - cluster_ref_fln
+    #               filename of cluster-to-county relationship file
+    #                   should be .csv from Josh's clustering function
+    #
+    # Output:
+    #   - data      a numpy cube with daily deaths by county
+    # 
+    # *** First row should be beef (ie:)
+    #   FIPS | 4022020 | 4032020 | ...
+    #
+    # -----------------------------------------------------
+    #
+    # NOTE:     This currently uses the death values in the clustering file to
+    #               allocate deaths. As such, it is allocating based on the
+    #               cummulative deaths that a given county had on the day
+    #               in which clustering was performed.
+    #               We may want to change this so that we base it on the daily
+    #               deaths since the input cube is daily deaths.
+    #
+    # Method:   * Allocates proportionally based on deaths report *
+    #           Import the clustering file
+    #           Determine fraction of deaths that each county in a cluster holds
+    #           Multiply the cluster-wide predicted deaths by these fractions
+    #           Populate a new matrix with the results
+    # 
+    # Result:   A new matrix with deaths by cluster re-allocated to its counties
+    #           This matrix is inherently larger than the original
+    #           The beef is changed to county FIPS instead of cluster id
+    #
+    #           Dimensionality is: [sample, day, county]
+    """
+    ##-- Separate panes that are already counties from panes that are clusters
+        # Assumes cluster fips are <1000 and counties are >1000
+    data_cnty = data[:,:,data[0,0,:] >= 1000]
+    data = data[:,:,data[0,0,:] < 1000]
+
+    ##-- Separate input cube into FIPS layer and data layer
+    cube_cluster_data = data[0,0,:].astype('int').tolist()    # cast to int
+    cube_deaths_data = data[1:,:,:].copy()
+
+
+    ##-- Load and process cluster data
+    cluster_data = pd.read_csv(cluster_ref_fln)
+
+    # Extract useful columns
+    cluster_data = cluster_data[['fips', 'cluster', 'deaths', 'clusterDeaths']]
+
+    # Cast fips and cluster values to int
+    cluster_data['fips'] = cluster_data['fips'].astype('int')
+    cluster_data['cluster'] = cluster_data['cluster'].astype('int')
+
+    # Extract clusters that are in the data cube
+    cluster_data = cluster_data[cluster_data.cluster.isin(cube_cluster_data)]
+
+
+    ##-- Preallocate new data matrix (use nan to check if anything is unallocated later)
+        # Add as many frames as there are fips in the clustering data
+        # NOTE: don't include fips from counties in the original data since 
+        #  that data gets appended at the end
+    data = np.zeros((data.shape[0],data.shape[1],len(cluster_data.index)))*np.nan
+    ##-- Iterate through clusters in input cube and allocate predictions
+    ind = 0     
+    for i,clust in enumerate(cube_cluster_data):
+        # Get rows related to the given state
+        clust_rows = cluster_data[cluster_data['cluster'] == clust]
+
+        # Calculate proportion of deaths per county
+        cnty_deaths = (clust_rows['deaths']/clust_rows['clusterDeaths'].iloc[0]).values
+
+        #-- Allocate deaths by current proporitionality
+        # Create matrix of predictions for later multiplication
+        data_clust = cube_deaths_data[:,:,i].copy()             # Extract this cluster's prediction frame
+        data_clust = data_clust.reshape(data_clust.shape+(1,))  # Add 3rd dimension (to allow tiling)
+        data_clust = np.tile(data_clust,(1,1,len(cnty_deaths)))    # Repeat frame for every county in cluster
+        # --> data_clust is now: (samples,days,counties-in-cluster)
+        # Rotate the cnty_deaths vector into 3rd dimension
+        cnty_deaths = cnty_deaths.reshape((1,1,)+cnty_deaths.shape)
+        # Multiply the proportion of deaths vector with the total deaths to allocate
+            # np.multiply broadcasts the vector to the correct dimensionality
+        cnty_deaths = np.multiply(data_clust, cnty_deaths)
+        # --> cnty_deaths is now: (samples,days,counties-in-cluster)
+
+        #-- Create county FIPS beef (will be top layer of cube)
+        # Preallocate matrix
+        beef = np.zeros((1,)+data_clust.shape[1:])
+        # Populate beef with fips codes 
+        beef[0,:,:] = clust_rows['fips'].values
+
+        #-- Place result into final matrix
+        data[1:,:,ind:ind+len(clust_rows.index)] = cnty_deaths
+        # Add county FIPS beef
+        data[0,:,ind:ind+len(clust_rows.index)] = beef
+
+
+        #-- Increase index of current matrix allocation
+        ind += len(clust_rows.index)
+
+    if np.sum(np.isnan(data)) != 0:
+        raise ValueError('An element of the output matrix is unallocated')
+
+    ##-- Append original data that was already county-based 
+    data = np.dstack((data_cnty, data))
+
+    return data
