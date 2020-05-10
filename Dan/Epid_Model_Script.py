@@ -157,7 +157,7 @@ if __name__ == '__main__':
         # that Alex is doing. 
 
     #-- Flag to do hyperparameter optimization over the init cond. fudge factors
-    isRunInitConHyper = True
+    isRunInitConHyper = False
 
     #-- Bounds for the search
     init_bd = [(0.3,5), (0.01,1), (0.001,20)]
