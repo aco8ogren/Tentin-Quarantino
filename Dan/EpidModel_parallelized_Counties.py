@@ -677,13 +677,20 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     # Cluster low deaths counties
     if isCluster and len(list_of_low_death_fips)>0:
         from Josh.CountyClustering.ClusterByDeaths import JoshMeansClustering as JMC
-        clusteringDF=JMC(list_of_low_death_fips,cluterDate,D_THRES)
-        clusteringDF.cluster+=1
-        list_of_fips_to_train += clusteringDF[clusteringDF.clusterDeaths>50].cluster.unique().tolist()
+        if isSaveRes:
+            # set the filename for saving the clustering data
+            sv_clust_flnm = os.path.splitext(sv_flnm_mat)[0] + '_clusters.csv'
+        else:
+            # Set to none so that it does not save
+            sv_clust_flnm = None
+        
+        clusteringDF=JMC(list_of_low_death_fips,cluterDate,D_THRES,Fpath=sv_clust_flnm)
+        list_of_fips_to_train += clusteringDF[clusteringDF.clusterDeaths > D_THRES].cluster.unique().tolist()
         clusteredDF=pd.merge(df.drop(columns=['county','state']),clusteringDF.drop(columns=['long','lat','deaths']),how='right', on = 'fips')
         # tmp=clusteredDF[['date','cases','deaths','Population','cluster']].groupby(['cluster','date']).sum().reset_index().rename(columns={'cluster':'fips'})
         tmp=clusteredDF[['date','date_processed','date_datetime','cases','deaths','Population','cluster']].groupby(['cluster','date','date_processed','date_datetime']).sum().reset_index()
-        clusteredDF=pd.merge(tmp,clusteredDF[['cluster','state','county']],on='cluster').rename(columns={'cluster':'fips'})
+        #Problem line Below
+        clusteredDF=pd.merge(tmp,clusteredDF[['cluster','state','county']].drop_duplicates(),on='cluster').rename(columns={'cluster':'fips'})
         df=pd.concat([df,clusteredDF])
 
         clusterMeans=pd.merge(mobility_df,clusteringDF[['fips','cluster']],how='right',on='fips')

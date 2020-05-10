@@ -80,6 +80,8 @@ def JoshMeansClustering(fipsList,date,CritCases=50,Fpath=None):
     ClusterDF['county']=['cluster%i'%i for i in ClusterDF.cluster.values]
     ClusterDF['cluster']=ClusterDF['cluster'].astype(int)
 
+    ClusterDF.loc[:,'cluster'] += 1
+
     if Fpath is not None:
         ClusterDF.to_csv(Fpath)
     return ClusterDF

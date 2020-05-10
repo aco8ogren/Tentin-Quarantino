@@ -29,15 +29,16 @@ if __name__ == '__main__':
     isSaveRes = True
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
-    sv_flnm_mat = 'Dan\\PracticeOutputs\\TuningInitCond.mat'
+        # NOTE: when clustering, the .mat filename will be used for saving the cluster file
+    sv_flnm_mat = 'Dan\\PracticeOutputs\\TrainFull.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
     #-- Multiprocessing settings
     # Flag to choose whether multiprocessing should be used
-    isMultiProc = True
+    isMultiProc = False
     # Number of cores to use (logical cores, not physical cores)
-    workers = 8
+    workers = 10
 
 
     #-- Filtering parameters
@@ -60,9 +61,15 @@ if __name__ == '__main__':
     min_train_days = 5
 
 
+    #-- Clustering settings
+    # Enable clustering: combines the low-death counties into clusters for training
+        # When False, the code will run as it used to
+    isCluster = True
+
+
     #-- Sub-select counties to train on
     # Flag to choose whether to sub-select
-    isSubSelect = True
+    isSubSelect = False
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
     just_train_these_fips = [36061, 36059, 26163, 17031, 36103, 36119, 34013, 34003, 
@@ -93,7 +100,7 @@ if __name__ == '__main__':
     #   2 :     Only prints in main function are shown (those in par_fun are suppressed)
     #   3 :     (DEFAULT) All print statements are executed
     # *** Error-related prints are always printed
-    verbosity = 3
+    verbosity = 1
 
     #-- Set hyperparameters
     # NOTE/TODO: Alex to explain what these are
@@ -108,13 +115,13 @@ if __name__ == '__main__':
 
     #-- Define control parameters
     # Flag to distribue state deaths amongst counties
-    isAllocCounties = False
+    isAllocCounties = True
     # Flag to translate cummulative data to daily counts
     isComputeDaily = True
 
     #-- When a model was not trained, provide filename to format
         # if a model was trained, that filename will automatically be used
-    format_flnm_in = 'Dan/PracticeOutputs/Blah.mat'
+    format_flnm_in = 'Dan/PracticeOutputs/TestClustering.mat'
 
     #-- Provide filename for output file 
     format_flnm_out = os.path.splitext(format_flnm_in)[0] + '.csv'
@@ -128,7 +135,7 @@ if __name__ == '__main__':
 
     #-- When model was not formatted, provide a filename to evaluate
         # if a model was formatted, that filename will automatically be used
-    eval_flnm_in = 'Dan/PracticeOutputs/Foo.csv'
+    eval_flnm_in = 'Dan/PracticeOutputs/TestClustering.csv'
 
     #-- Day from which we should evaluate 
         # in format 'YYYY-MM-DD'
@@ -150,15 +157,15 @@ if __name__ == '__main__':
         # that Alex is doing. 
 
     #-- Flag to do hyperparameter optimization over the init cond. fudge factors
-    isRunInitConHyper = False
+    isRunInitConHyper = True
 
     #-- Bounds for the search
     init_bd = [(0.3,5), (0.01,1), (0.001,20)]
 
     #-- Other settings for hyperparam run
     acq_func = "EI"
-    n_calls = 20 
-    n_random_starts = 7 
+    n_calls = 15 
+    n_random_starts = 5 
     x0 = init_vec
     noise = 0.1**2
     random_state = 1234
@@ -203,8 +210,9 @@ if __name__ == '__main__':
                             just_train_these_fips = just_train_these_fips,
                             isPlotBokeh = isPlotBokeh, 
                             isConstInitCond = isConstInitCond,
-                            init_vec=init_vec,
-                            verbosity=verbosity)
+                            init_vec = init_vec,
+                            verbosity = verbosity,
+                            isCluster = isCluster)
             if isSaveRes and not isRunInitConHyper:
                 print('*** Model results saved to:\n    %s\n    %s'%(sv_flnm_mat, sv_flnm_np))
                 
@@ -235,8 +243,9 @@ if __name__ == '__main__':
             score = evaluate_predictions(eval_flnm_in,
                                             eval_start_day,
                                             end_date = eval_end_day)
+            return score
 
-        return score
+        
 
 # %% Run 
 

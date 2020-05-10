@@ -63,8 +63,13 @@ def format_file_for_evaluation(input_fln,output_fln,isAllocCounties = True,isCom
     # current county deaths reference file (used when isAllocCounties=True)
     county_ref_fln = f"{homedir}/data/us/covid/nyt_us_counties_daily.csv"
 
+
+    # NOTE: This assumes that the clustering file's name is the same as the input file but with _cluster.csv
+    cluster_ref_fln = os.path.splitext(input_fln)[0] + '_clusters.csv'
+
+
     # Control flags
-    # isAllocCounties = True          # Flag to distribue state deaths amongst counties
+    # isAllocCounties = True          # Flag to distribue cluster deaths amongst counties
     # isComputeDaily = True           # Flag to translate cummulative data to daily counts
 
 
@@ -87,7 +92,7 @@ def format_file_for_evaluation(input_fln,output_fln,isAllocCounties = True,isCom
 
 
     if isAllocCounties:
-        data = cf.alloc_counties(data, county_ref_fln)
+        data = cf.alloc_fromCluster(data, cluster_ref_fln)
 
     # %%
     # CALCULATE QUANTILES and extract data chunks (split into fips and percentiles)
