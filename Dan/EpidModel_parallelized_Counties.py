@@ -436,7 +436,9 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
                     isSubSelect = True,just_train_these_fips = [36061],
                     isPlotBokeh = False, 
                     isConstInitCond = True, init_vec=(2, 0.85, 3),
-                    verbosity = 3):
+                    verbosity = 3,
+                    isCluster=False):
+                    
 
     tic0 = time.time()
     
@@ -500,7 +502,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         hv.extension('bokeh')
 
 
-    # -%%
+    # %%
     #  Let's load the data from the relevant folder.
     # import git
 
@@ -590,6 +592,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     # %%
     #-- Remove days beyond our training limit day
     if train_til is not None:
+        cluterDate=train_til
         train_til = int((train_til-global_dayzero)/np.timedelta64(1,'D'))
         df = df[df['date_processed'] < train_til]
 
@@ -670,7 +673,27 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
 
     # Find counties with too few deaths to be trained on ( <= D_THRES)
     list_of_low_death_fips = list(fips_to_maxdeaths[fips_to_maxdeaths <= D_THRES].index)
+    
+    # Cluster low deaths counties
+    if isCluster and len(list_of_low_death_fips)>0:
+        from Josh.CountyClustering.ClusterByDeaths import JoshMeansClustering as JMC
+        clusteringDF=JMC(list_of_low_death_fips,cluterDate,D_THRES)
+        clusteringDF.cluster+=1
+        list_of_fips_to_train += clusteringDF[clusteringDF.clusterDeaths>50].cluster.unique().tolist()
+        clusteredDF=pd.merge(df.drop(columns=['county','state']),clusteringDF.drop(columns=['long','lat','deaths']),how='right', on = 'fips')
+        # tmp=clusteredDF[['date','cases','deaths','Population','cluster']].groupby(['cluster','date']).sum().reset_index().rename(columns={'cluster':'fips'})
+        tmp=clusteredDF[['date','date_processed','date_datetime','cases','deaths','Population','cluster']].groupby(['cluster','date','date_processed','date_datetime']).sum().reset_index()
+        clusteredDF=pd.merge(tmp,clusteredDF[['cluster','state','county']],on='cluster').rename(columns={'cluster':'fips'})
+        df=pd.concat([df,clusteredDF])
 
+        clusterMeans=pd.merge(mobility_df,clusteringDF[['fips','cluster']],how='right',on='fips')
+        meanCols=clusterMeans.columns.drop(['country_code', 'admin_level', 'state','admin2', 'fips','cluster'])
+        clusterMeans=clusterMeans.groupby('cluster').agg({col:np.mean for col in meanCols}).reset_index().rename(columns={'cluster':'fips'})
+        mobility_df=pd.concat([mobility_df,clusterMeans])
+        fips_to_maxdeaths = df.groupby('fips')['deaths'].max()
+        
+
+    # %%
 
     #-- Print name of counties to be trained on
     # Get county names (as list in same order as list_of_fips_to_train)
