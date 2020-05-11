@@ -60,13 +60,14 @@ if __name__ == '__main__':
                                         # the bounds on each dimension of x
                     [
                             (0,.1),       # p_err_frac: Parameter error estimate fraction (i.e. .05 --> 5% error)
-                            (30,200),             # D_THRES: If a state does not have more than this number of deaths by train_til, we do not make predictions (or, we make cluster predictions)
-                            (5,15),             # death_weight: factor by which to weigh error for death data more than symptomatic infected data during SEIIRQD optimization
+                            (30,500),             # D_THRES: If a state does not have more than this number of deaths by train_til, we do not make predictions (or, we make cluster predictions)
+                            (1,15),             # death_weight: factor by which to weigh error for death data more than symptomatic infected data during SEIIRQD optimization
                             (0,.5),            # alpha: the alpha from LeakyReLU determines how much to penalize the SEIIRQD objective function for over predicting the symptomatic infected
                             (0.1,5),       # init_vec #1
                             (.001,1),      # init_vec #2
                             (.0001,10)
-                    ],      
+                    ],   
+                    x0 = [.1,100,5,0,4.901,0.020,0.114],   
                     acq_func="EI",      # the acquisition function
                     n_calls=1,          # the number of evaluations of f
                     n_random_starts=0,  # the number of random initialization points
