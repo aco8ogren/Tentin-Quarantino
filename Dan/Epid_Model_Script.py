@@ -26,11 +26,11 @@ if __name__ == '__main__':
 
     #-- Define control parameters
     # Flag to choose whether to save the results or not
-    isSaveRes = False
+    isSaveRes = True
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
-    sv_flnm_mat = 'Alex\\PracticeOutputs\\Checking_new_code.mat'
+    sv_flnm_mat = 'Alex\\PracticeOutputs\in_case_we_want_to_give_up_and_drink_beer.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
         # OR: leave as None to train until the latest data for which there is data
-    train_til = '2020 04 24'
+    train_til = '2020 05 09'
     # Minimum deaths considered in training
         # Sets the first DAY which will be calculated as part of the optimization
         # by only including days with more than this many deaths. THIS IS DIFFERENT than 
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     #-- Clustering settings
     # Enable clustering: combines the low-death counties into clusters for training
         # When False, the code will run as it used to
-    isCluster = True
+    isCluster = False
 
 
     #-- Sub-select counties to train on
@@ -110,11 +110,11 @@ if __name__ == '__main__':
 # %% Setup Formatter run
 
     #-- Flag to choose whether to format a model's .mat output file
-    isFormat = False
+    isFormat = True
 
     #-- Define control parameters
     # Flag to distribue state deaths amongst counties
-    isAllocCounties = True
+    isAllocCounties = False
     # Allocating using the mean number of num_alloc_days days BEFORE alloc_day
     num_alloc_days=5
     alloc_day=train_til
@@ -139,7 +139,7 @@ if __name__ == '__main__':
 
     #-- When model was not formatted, provide a filename to evaluate
         # if a model was formatted, that filename will automatically be used
-    eval_flnm_in = 'Dan/PracticeOutputs/TestClustering.csv'
+    eval_flnm_in = 'Alex/PracticeOutputs/Checking_new_code.csv'
 
     #-- Day from which we should evaluate 
         # in format 'YYYY-MM-DD'
