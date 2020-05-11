@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
     #-- Multiprocessing settings
     # Flag to choose whether multiprocessing should be used
-    isMultiProc = True
+    isMultiProc = False
     # Number of cores to use (logical cores, not physical cores)
     workers = 3
 
@@ -72,8 +72,8 @@ if __name__ == '__main__':
     isSubSelect = True
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
-    just_train_these_fips = [36061]+[53061, 6059, 4013, 6085, 25025, 6075, 55025, 6073, 48029, 31055]
-    #, 36059, 26163, 17031, 36103, 36119, 34013, 34003, 6037,  9001,  34017, 26125, 25017, 34039, 26099, 9003] 
+    just_train_these_fips = [6059, 6085, 6075, 55025, 48029, 31055]
+    #[36061, 36059, 26163, 17031, 36103, 36119, 34013, 34003, 6037,  9001,  34017, 26125, 25017, 34039, 26099, 9003] 
 
 
     #-- Method used for choosing initial conditions
