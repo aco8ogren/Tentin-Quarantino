@@ -105,7 +105,7 @@ def q(t, N, shift,mobility_data,offset):
     Q = N*(1-moving-shift)
     try:
         if np.round(t) >= len(Q):
-            if len(Q>0):
+            if len(Q)>0:
                 return Q[-1]
     except TypeError:
         # print('ERROR in q(): Q was a scalar you poop')
@@ -700,13 +700,14 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         clusterMeans=pd.merge(cluster_mobility,clusteringDF[['fips','cluster']],how='right',on='fips')
         clusterMeans['cluster_population']=clusterMeans.groupby('cluster')['Population'].transform(np.sum)
         clusterMeans['county_weights']=clusterMeans.Population/clusterMeans.cluster_population
-        meanCols=clusterMeans.columns.drop(['country_code', 'admin_level', 'state','admin2', 'fips','cluster','Population','cluster_population','county_weights'])
+        # meanCols=clusterMeans.columns.drop(['country_code', 'admin_level', 'state','admin2', 'fips','cluster','Population','cluster_population','county_weights'])
+        meanCols=[col for col in clusterMeans.columns if type(col) in [int,float]]
         for col in meanCols:
             clusterMeans.loc[:,col]=clusterMeans[col]*clusterMeans['county_weights']
 
-        clusterMeans=clusterMeans.rename(columns={'fips':'county_fips','cluster':'fips'})
+        # clusterMeans=clusterMeans.rename(columns={'fips':'county_fips','cluster':'fips'})
         
-        # clusterMeans=clusterMeans.groupby('cluster').agg({col:np.mean for col in meanCols}).reset_index().rename(columns={'cluster':'fips'})
+        clusterMeans=clusterMeans.groupby('cluster').agg({col:np.mean for col in meanCols}).reset_index().rename(columns={'cluster':'fips'})
         mobility_df=pd.concat([mobility_df,clusterMeans])
         fips_to_maxdeaths = df.groupby('fips')['deaths'].max()
         
@@ -851,6 +852,4 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     if verbosity >= 2:
         print('Sample of cube:')
         print(res[:2,100,:4]) # list the fips and the deaths on day 100 for the first 10 counties in the list of trained counties
-                 
 
-# %%
