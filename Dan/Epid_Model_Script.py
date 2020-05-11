@@ -30,7 +30,7 @@ if __name__ == '__main__':
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
-    sv_flnm_mat = 'Alex\\PracticeOutputs\in_case_we_want_to_give_up_and_drink_beer.mat'
+    sv_flnm_mat = 'Alex\\PracticeOutputs\testing.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
         # OR: leave as None to train until the latest data for which there is data
-    train_til = '2020 05 09'
+    train_til = '2020 05 01'
     # Minimum deaths considered in training
         # Sets the first DAY which will be calculated as part of the optimization
         # by only including days with more than this many deaths. THIS IS DIFFERENT than 
@@ -135,7 +135,7 @@ if __name__ == '__main__':
 # %% Setup evaluator run
 
     #-- Flag to choose whether to evaluate a .csv file
-    isEval = False
+    isEval = True
 
     #-- When model was not formatted, provide a filename to evaluate
         # if a model was formatted, that filename will automatically be used
@@ -143,12 +143,12 @@ if __name__ == '__main__':
 
     #-- Day from which we should evaluate 
         # in format 'YYYY-MM-DD'
-    eval_start_day = '2020-04-24'
+    eval_start_day = '2020-05-01'
 
     #-- Day until which we should evaluate
         # in format 'YYYY-MM-DD'
         # Set to None to evaluate until most recent day of data
-    eval_end_day = '2020-05-05'
+    eval_end_day = '2020-05-09'
 
 
 # %% (OPTIONAL) Define parameters for init conditional optimization
