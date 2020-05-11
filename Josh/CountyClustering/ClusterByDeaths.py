@@ -49,7 +49,7 @@ def JoshMeansClustering(fipsList,date,CritCases=50,Fpath=None):
         # print(df)
         LongQ+=1
     df.loc[df.LongQ.isna(),'LongQ']=LongQ-1
-    DFs=[df[df.LongQ==q] for q in np.arange(df.LongQ.max())]
+    DFs=[df[df.LongQ==q] for q in np.sort(df.LongQ.unique())]
     
     Q=0
     for i,DF in enumerate(DFs):
