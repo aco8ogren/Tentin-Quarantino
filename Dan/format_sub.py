@@ -42,7 +42,9 @@ def read_file(filename):
     return data
 
 # %% Define formatting function
-def format_file_for_evaluation(input_fln,output_fln,isAllocCounties = True,isComputeDaily = True):
+def format_file_for_evaluation(input_fln,output_fln,isAllocCounties = True,isComputeDaily = True, alloc_day=None, num_alloc_days=5):
+    # if alloc_day is not None:
+    #     alloc_day=
 # %-% Setup paths
     HomeDIR='Tentin-Quarantino'
     wd=os.path.dirname(os.path.realpath(__file__))
@@ -92,7 +94,7 @@ def format_file_for_evaluation(input_fln,output_fln,isAllocCounties = True,isCom
 
 
     if isAllocCounties:
-        data = cf.alloc_fromCluster(data, cluster_ref_fln)
+        data = cf.alloc_fromCluster(data, cluster_ref_fln,alloc_day=alloc_day, num_alloc_days=num_alloc_days)
 
     # %%
     # CALCULATE QUANTILES and extract data chunks (split into fips and percentiles)

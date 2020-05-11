@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     #-- Define control parameters
     # Flag to choose whether to save the results or not
-    isSaveRes = True
+    isSaveRes = False
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
@@ -110,13 +110,18 @@ if __name__ == '__main__':
 # %% Setup Formatter run
 
     #-- Flag to choose whether to format a model's .mat output file
-    isFormat = True
+    isFormat = False
 
     #-- Define control parameters
     # Flag to distribue state deaths amongst counties
     isAllocCounties = True
+    # Allocating using the mean number of num_alloc_days days BEFORE alloc_day
+    num_alloc_days=5
+    alloc_day=train_til
     # Flag to translate cummulative data to daily counts
     isComputeDaily = True
+
+
 
     #-- When a model was not trained, provide filename to format
         # if a model was trained, that filename will automatically be used
@@ -130,7 +135,7 @@ if __name__ == '__main__':
 # %% Setup evaluator run
 
     #-- Flag to choose whether to evaluate a .csv file
-    isEval = True
+    isEval = False
 
     #-- When model was not formatted, provide a filename to evaluate
         # if a model was formatted, that filename will automatically be used
@@ -226,7 +231,10 @@ if __name__ == '__main__':
             format_file_for_evaluation(format_flnm_in,
                                         format_flnm_out,
                                         isAllocCounties = isAllocCounties,
-                                        isComputeDaily = isComputeDaily)
+                                        isComputeDaily = isComputeDaily,
+                                        alloc_day=alloc_day,
+                                        num_alloc_days=num_alloc_days)
+
 
             if not isRunInitConHyper:
                 print('*** Formatted file:\n    %s'%format_flnm_out)
