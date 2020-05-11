@@ -700,13 +700,14 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         clusterMeans=pd.merge(cluster_mobility,clusteringDF[['fips','cluster']],how='right',on='fips')
         clusterMeans['cluster_population']=clusterMeans.groupby('cluster')['Population'].transform(np.sum)
         clusterMeans['county_weights']=clusterMeans.Population/clusterMeans.cluster_population
-        meanCols=clusterMeans.columns.drop(['country_code', 'admin_level', 'state','admin2', 'fips','cluster','Population','cluster_population','county_weights'])
+        # meanCols=clusterMeans.columns.drop(['country_code', 'admin_level', 'state','admin2', 'fips','cluster','Population','cluster_population','county_weights'])
+        meanCols=[col for col in clusterMeans.columns if type(col) in [int,float]]
         for col in meanCols:
             clusterMeans.loc[:,col]=clusterMeans[col]*clusterMeans['county_weights']
 
-        clusterMeans=clusterMeans.rename(columns={'fips':'county_fips','cluster':'fips'})
+        # clusterMeans=clusterMeans.rename(columns={'fips':'county_fips','cluster':'fips'})
         
-        # clusterMeans=clusterMeans.groupby('cluster').agg({col:np.mean for col in meanCols}).reset_index().rename(columns={'cluster':'fips'})
+        clusterMeans=clusterMeans.groupby('cluster').agg({col:np.mean for col in meanCols}).reset_index().rename(columns={'cluster':'fips'})
         mobility_df=pd.concat([mobility_df,clusterMeans])
         fips_to_maxdeaths = df.groupby('fips')['deaths'].max()
         
@@ -852,15 +853,3 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         print('Sample of cube:')
         print(res[:2,100,:4]) # list the fips and the deaths on day 100 for the first 10 counties in the list of trained counties
 
-
-# %%
-# if __name__ == '__main__':
-#     SEIIRQD_model(isSaveRes=True,sv_flnm_np='Dan/TestOnAlex.npy', sv_flnm_mat='Dan/TestOnAlex.mat', isMultiProc=True, workers=20, train_til='2020 04 24', train_Dfrom=7,
-#                     min_train_days=5, isSubSelect=True, 
-#                     just_train_these_fips=[36061, 36059, 26163, 17031, 36103, 36119, 34013, 34003, 
-#                                 6037,  9001,  34017, 26125, 25017, 34039, 26099, 9003],
-#                     isConstInitCond=False, init_vec=(4.901,0.02, 0.114))
-
-                 
-
-# %%
