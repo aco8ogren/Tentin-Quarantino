@@ -22,7 +22,7 @@ if __name__ == '__main__':
     #-- Flag to choose whether to train the model
         # If this is true, the output file from this run will be used for
         # the remainder of the sections
-    isTrainModel = False
+    isTrainModel = True
 
     #-- Define control parameters
     # Flag to choose whether to save the results or not
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
         # OR: leave as None to train until the latest data for which there is data
-    train_til = '2020 04 24'
+    train_til = '2020 05 10'
     # Minimum deaths considered in training
         # Sets the first DAY which will be calculated as part of the optimization
         # by only including days with more than this many deaths. THIS IS DIFFERENT than 
@@ -135,7 +135,7 @@ if __name__ == '__main__':
 # %% Setup evaluator run
 
     #-- Flag to choose whether to evaluate a .csv file
-    isEval = True
+    isEval = False
 
     #-- When model was not formatted, provide a filename to evaluate
         # if a model was formatted, that filename will automatically be used
