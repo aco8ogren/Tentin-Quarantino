@@ -15,6 +15,8 @@ datadir = f"{homedir}"
 
 from skopt import gp_minimize
 from skopt.plots import plot_convergence
+from skopt import callbacks
+from skopt.callbacks import CheckpointSaver
 import numpy as np
 from Dan.format_sub import format_file_for_evaluation
 from Dan.EpidModel_parallelized_Counties import SEIIRQD_model
@@ -52,6 +54,8 @@ def f(HYPERPARAMS):
 
 # %%
 if __name__ == '__main__':
+    checkpoint_saver = CheckpointSaver("./checkpoint.pkl", compress=9) # keyword arguments will be passed to `skopt.dump`
+
     res = gp_minimize(f,                  # the function to minimize
                                         # the bounds on each dimension of x
                     [
@@ -65,9 +69,10 @@ if __name__ == '__main__':
                     ],      
                     acq_func="EI",      # the acquisition function
                     n_calls=1,          # the number of evaluations of f
-                    n_random_starts=1,  # the number of random initialization points
+                    n_random_starts=0,  # the number of random initialization points
                     noise=0.1**2,       # the noise level (optional)
                     random_state=1234,  # the random seed
+                    callbacks = [checkpoint_saver],
                     verbose = True)   
 # %%
     fig = plot_convergence(res)
