@@ -1,0 +1,3 @@
+#! /bin/bash
+python3 -m venv seiirqEnv
+seiirqEnv/bin/pip install -r ./Tentin-Quarantino/Josh/seirqEnv.txt
