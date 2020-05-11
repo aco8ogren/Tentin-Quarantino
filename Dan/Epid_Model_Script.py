@@ -30,15 +30,15 @@ if __name__ == '__main__':
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
-    sv_flnm_mat = 'Dan\\PracticeOutputs\\TrainFull.mat'
+    sv_flnm_mat = 'Alex\\PracticeOutputs\\Checking_new_code.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
     #-- Multiprocessing settings
     # Flag to choose whether multiprocessing should be used
-    isMultiProc = False
+    isMultiProc = True
     # Number of cores to use (logical cores, not physical cores)
-    workers = 10
+    workers = 20
 
 
     #-- Filtering parameters
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     #-- Method used for choosing initial conditions
         # True: Use the same vector (hardcoded) as the initial conditions for all counties
         # False: Calculate unique initial conditions for each county 
-    isConstInitCond = False
+    isConstInitCond = True
     # When calculating unique conditions for each county, define fudge factors:
     init_vec = (4.901,          # T : Is = T*cases      Old: 3.933
                 0.020,          # R : Ia = R*Itot       Old: 0.862
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     #   2 :     Only prints in main function are shown (those in par_fun are suppressed)
     #   3 :     (DEFAULT) All print statements are executed
     # *** Error-related prints are always printed
-    verbosity = 1
+    verbosity = 3
 
     #-- Set hyperparameters
     p_err_frac = 0.0995764604328379   # The size of the uncertainty that we have on our optimal SEIIRQD parameters. This affects the size of our quantile differences.
@@ -120,7 +120,7 @@ if __name__ == '__main__':
 
     #-- When a model was not trained, provide filename to format
         # if a model was trained, that filename will automatically be used
-    format_flnm_in = 'Dan/PracticeOutputs/TestClustering.mat'
+    format_flnm_in = 'Alex/PracticeOutputs/Checking_new_code.mat'
 
     #-- Provide filename for output file 
     format_flnm_out = os.path.splitext(format_flnm_in)[0] + '.csv'

@@ -414,8 +414,8 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
     # do non-risky stuff outside of try context
     if const['verbosity'] >= 3:
         print('############################\n' + \
-            '### Core %2d has finished ###\n'%coreInd + \
-            '############################\n')
+              '### Core %2d has finished ###\n'%coreInd + \
+              '############################\n')
     return cube
 
 def apply_by_mp(func, workers, args):
