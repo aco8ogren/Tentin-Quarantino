@@ -193,7 +193,9 @@ def alloc_counties(data, county_ref_fln, alloc_day=None):
 
     return data
 
-def alloc_fromCluster(data, cluster_ref_fln):
+
+
+def alloc_fromCluster(data, cluster_ref_fln,alloc_day=None,num_alloc_days=5):
     """
     # Function to allocate state-wide deaths amongst counties
     # 
@@ -234,6 +236,14 @@ def alloc_fromCluster(data, cluster_ref_fln):
     #
     #           Dimensionality is: [sample, day, county]
     """
+    ref_data = pd.read_csv(r'data\us\covid\nyt_us_counties_daily.csv')
+    ref_data=ref_data[['fips','date','deaths']]
+    ref_data.loc[:,'date']=pd.to_datetime(ref_data.date)
+    if alloc_day is not None:
+        lst_date = pd.to_datetime(alloc_day)-np.timedelta64(1,'D')
+    else:
+        # most recent date in set
+        lst_date = ref_data.date.max()
     ##-- Separate panes that are already counties from panes that are clusters
         # Assumes cluster fips are <1000 and counties are >1000
     data_cnty = data[:,:,data[0,0,:] >= 1000]
@@ -268,9 +278,18 @@ def alloc_fromCluster(data, cluster_ref_fln):
     for i,clust in enumerate(cube_cluster_data):
         # Get rows related to the given state
         clust_rows = cluster_data[cluster_data['cluster'] == clust]
-
+        fips_list=clust_rows.fips.unique()
+        fips_data=ref_data[ref_data.fips.isin(fips_list)]
+        first_date=lst_date-np.timedelta64(num_alloc_days-1,'D')
+        
+        fips_data=fips_data[(first_date <= fips_data.date) &  (fips_data.date<= lst_date)].groupby('fips').mean()
+        tot_deaths=fips_data.deaths.sum()
+        cnty_deaths=fips_data.loc[clust_rows.fips].deaths.values/tot_deaths
+        
         # Calculate proportion of deaths per county
-        cnty_deaths = (clust_rows['deaths']/clust_rows['clusterDeaths'].iloc[0]).values
+        
+
+        # cnty_deaths2 = (clust_rows['deaths']/clust_rows['clusterDeaths'].iloc[0]).values
 
         #-- Allocate deaths by current proporitionality
         # Create matrix of predictions for later multiplication

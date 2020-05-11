@@ -686,6 +686,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
             sv_clust_flnm = None
         
         clusteringDF=JMC(list_of_low_death_fips,cluterDate,D_THRES,Fpath=sv_clust_flnm)
+        list_of_clustered_fips=clusteringDF.fips.unique()
         list_of_fips_to_train += clusteringDF[clusteringDF.clusterDeaths > D_THRES].cluster.unique().tolist()
         clusteredDF=pd.merge(df.drop(columns=['county','state']),clusteringDF.drop(columns=['long','lat','deaths']),how='right', on = 'fips')
         # tmp=clusteredDF[['date','cases','deaths','Population','cluster']].groupby(['cluster','date']).sum().reset_index().rename(columns={'cluster':'fips'})
@@ -694,9 +695,18 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         clusteredDF=pd.merge(tmp,clusteredDF[['cluster','state','county']].drop_duplicates(),on='cluster').rename(columns={'cluster':'fips'})
         df=pd.concat([df,clusteredDF])
 
-        clusterMeans=pd.merge(mobility_df,clusteringDF[['fips','cluster']],how='right',on='fips')
-        meanCols=clusterMeans.columns.drop(['country_code', 'admin_level', 'state','admin2', 'fips','cluster'])
-        clusterMeans=clusterMeans.groupby('cluster').agg({col:np.mean for col in meanCols}).reset_index().rename(columns={'cluster':'fips'})
+        cluster_mobility=mobility_df[mobility_df.fips.isin(list_of_clustered_fips)]
+        cluster_mobility=cluster_mobility.merge(df[['fips','Population']].drop_duplicates(),on='fips',how='left')
+        clusterMeans=pd.merge(cluster_mobility,clusteringDF[['fips','cluster']],how='right',on='fips')
+        clusterMeans['cluster_population']=clusterMeans.groupby('cluster')['Population'].transform(np.sum)
+        clusterMeans['county_weights']=clusterMeans.Population/clusterMeans.cluster_population
+        meanCols=clusterMeans.columns.drop(['country_code', 'admin_level', 'state','admin2', 'fips','cluster','Population','cluster_population','county_weights'])
+        for col in meanCols:
+            clusterMeans.loc[:,col]=clusterMeans[col]*clusterMeans['county_weights']
+
+        clusterMeans=clusterMeans.rename(columns={'fips':'county_fips','cluster':'fips'})
+        
+        # clusterMeans=clusterMeans.groupby('cluster').agg({col:np.mean for col in meanCols}).reset_index().rename(columns={'cluster':'fips'})
         mobility_df=pd.concat([mobility_df,clusterMeans])
         fips_to_maxdeaths = df.groupby('fips')['deaths'].max()
         
