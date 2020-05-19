@@ -30,15 +30,15 @@ if __name__ == '__main__':
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
-    sv_flnm_mat = 'Alex\\PracticeOutputs\in_case_we_want_to_give_up_and_drink_beer.mat'
+    sv_flnm_mat = 'Dan\\PracticeOutputs\\Debugging.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
     #-- Multiprocessing settings
     # Flag to choose whether multiprocessing should be used
-    isMultiProc = True
+    isMultiProc = False
     # Number of cores to use (logical cores, not physical cores)
-    workers = 20
+    workers = 3
 
 
     #-- Filtering parameters
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
         # OR: leave as None to train until the latest data for which there is data
-    train_til = '2020 05 09'
+    train_til = '2020 05 10'
     # Minimum deaths considered in training
         # Sets the first DAY which will be calculated as part of the optimization
         # by only including days with more than this many deaths. THIS IS DIFFERENT than 
@@ -64,16 +64,16 @@ if __name__ == '__main__':
     #-- Clustering settings
     # Enable clustering: combines the low-death counties into clusters for training
         # When False, the code will run as it used to
-    isCluster = False
+    isCluster = True
 
 
     #-- Sub-select counties to train on
     # Flag to choose whether to sub-select
-    isSubSelect = False
+    isSubSelect = True
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
-    just_train_these_fips = [36061, 36059, 26163, 17031, 36103, 36119, 34013, 34003, 
-                             6037,  9001,  34017, 26125, 25017, 34039, 26099, 9003] 
+    just_train_these_fips = [6059, 6085, 6075, 55025, 48029, 31055]
+    #[36061, 36059, 26163, 17031, 36103, 36119, 34013, 34003, 6037,  9001,  34017, 26125, 25017, 34039, 26099, 9003] 
 
 
     #-- Method used for choosing initial conditions
@@ -114,7 +114,7 @@ if __name__ == '__main__':
 
     #-- Define control parameters
     # Flag to distribue state deaths amongst counties
-    isAllocCounties = False
+    isAllocCounties = True
     # Allocating using the mean number of num_alloc_days days BEFORE alloc_day
     num_alloc_days=5
     alloc_day=train_til
@@ -125,7 +125,7 @@ if __name__ == '__main__':
 
     #-- When a model was not trained, provide filename to format
         # if a model was trained, that filename will automatically be used
-    format_flnm_in = 'Alex/PracticeOutputs/Checking_new_code.mat'
+    format_flnm_in = 'Alex/PracticeOutputs/testing_clustering.mat'
 
     #-- Provide filename for output file 
     format_flnm_out = os.path.splitext(format_flnm_in)[0] + '.csv'
@@ -139,7 +139,7 @@ if __name__ == '__main__':
 
     #-- When model was not formatted, provide a filename to evaluate
         # if a model was formatted, that filename will automatically be used
-    eval_flnm_in = 'Alex/PracticeOutputs/Checking_new_code.csv'
+    eval_flnm_in = 'Alex/PracticeOutputs/testing_clustering.csv'
 
     #-- Day from which we should evaluate 
         # in format 'YYYY-MM-DD'
