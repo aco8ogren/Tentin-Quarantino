@@ -41,7 +41,7 @@ def select_region(df, region, min_deaths=50,mobility = False):
     d = df.loc[df['fips'] == region]
     if not mobility:
         # Extract entries for days beyond the threshold deaths
-        d = d[d['deaths'] > min_deaths]
+        d = d[d['deaths'] >= min_deaths]
     return d
 
 
@@ -593,7 +593,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     # -%%
     #-- Remove days beyond our training limit day
     if train_til is not None:
-        cluterDate=train_til
+        clusterDate=train_til
         train_til = int((train_til-global_dayzero)/np.timedelta64(1,'D'))
         df = df[df['date_processed'] <= train_til]
 
@@ -669,14 +669,15 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
 
 
     # -%%
-    # Find counties with enough deaths to be trained on ( > D_THRES)
-    list_of_fips_to_train = list(fips_to_maxdeaths[fips_to_maxdeaths > D_THRES].index)
+    # Find counties with enough deaths to be trained on ( >= D_THRES)
+    list_of_fips_to_train = list(fips_to_maxdeaths[fips_to_maxdeaths >= D_THRES].index)
 
-    # Find counties with too few deaths to be trained on ( <= D_THRES)
-    list_of_low_death_fips = list(fips_to_maxdeaths[fips_to_maxdeaths <= D_THRES].index)
+    # Find counties with too few deaths to be trained on ( < D_THRES)
+    list_of_low_death_fips = list(fips_to_maxdeaths[fips_to_maxdeaths < D_THRES].index)
     
     # Cluster low deaths counties
     if isCluster and len(list_of_low_death_fips)>0:
+        # Import rolling cluster function
         from Josh.CountyClustering.ClusterByDeaths import JoshMeansClustering as JMC
         if isSaveRes:
             # set the filename for saving the clustering data
@@ -685,29 +686,46 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
             # Set to none so that it does not save
             sv_clust_flnm = None
         
-        clusteringDF=JMC(list_of_low_death_fips,cluterDate,D_THRES,Fpath=sv_clust_flnm)
+        # Generate dataframe (clusteringDF) of clusters with at least D_THRES deaths ON clusterDate (train_til). This dataframe
+            # relates each county to its cluster number, along with some 
+            # additional data such as deaths on train_till for the counties and clusters 
+        clusteringDF=JMC(list_of_low_death_fips,clusterDate,D_THRES,Fpath=sv_clust_flnm)
+        # get list of all counties that were successfully clustered (without regard to deaths in cluster)
         list_of_clustered_fips=clusteringDF.fips.unique()
-        list_of_fips_to_train += clusteringDF[clusteringDF.clusterDeaths > D_THRES].cluster.unique().tolist()
+        # list of cluster artificial fips for clusters with total deaths at least D_THRES
+        list_of_fips_to_train += clusteringDF[clusteringDF.clusterDeaths >= D_THRES].cluster.unique().tolist()
+        # Merge clusteringDF with the main df to get clusteredDF
+            # Essentially taking the clustered counties from the main df and adding a column for clusters
         clusteredDF=pd.merge(df.drop(columns=['county','state']),clusteringDF.drop(columns=['long','lat','deaths']),how='right', on = 'fips')
-        # tmp=clusteredDF[['date','cases','deaths','Population','cluster']].groupby(['cluster','date']).sum().reset_index().rename(columns={'cluster':'fips'})
+        # Create a temporary df from clustered DF that groups by cluster and date and sums the cases, deaths, and population
+            # to get cluster totals
         tmp=clusteredDF[['date','date_processed','date_datetime','cases','deaths','Population','cluster']].groupby(['cluster','date','date_processed','date_datetime']).sum().reset_index()
-        #Problem line Below
+        # Merge the temporary df back into the main clusteredDF and rename cluster column to fips so that the clusters
+            # will be treated identically to couties
         clusteredDF=pd.merge(tmp,clusteredDF[['cluster','state','county']].drop_duplicates(),on='cluster').rename(columns={'cluster':'fips'})
+        # Add the cluster 'counties' back into the main df
         df=pd.concat([df,clusteredDF])
 
+        # Take mobility data of clustered counties
         cluster_mobility=mobility_df[mobility_df.fips.isin(list_of_clustered_fips)]
+        # Add a population column from the main df
         cluster_mobility=cluster_mobility.merge(df[['fips','Population']].drop_duplicates(),on='fips',how='left')
+        # Create new df that will have clustered average mobility values
+            # by adding cluster column to cluster_mobility 
         clusterMeans=pd.merge(cluster_mobility,clusteringDF[['fips','cluster']],how='right',on='fips')
+        # Add column for total cluster population by summing the population over the clusters
         clusterMeans['cluster_population']=clusterMeans.groupby('cluster')['Population'].transform(np.sum)
+        # Add column for weights for each county. These weights are for the final weighted average
+            # of the mobility data. The weights are the fraction of the cluster population represented by the county. 
         clusterMeans['county_weights']=clusterMeans.Population/clusterMeans.cluster_population
-        # meanCols=clusterMeans.columns.drop(['country_code', 'admin_level', 'state','admin2', 'fips','cluster','Population','cluster_population','county_weights'])
+        # Get the names of each of the actual mobility data columns
         meanCols=[col for col in clusterMeans.columns if type(col) in [int,float]]
+        # Multiply each column by the weights so that when a mean is taken it is weighted 
         for col in meanCols:
             clusterMeans.loc[:,col]=clusterMeans[col]*clusterMeans['county_weights']
-
-        # clusterMeans=clusterMeans.rename(columns={'fips':'county_fips','cluster':'fips'})
-        
+        # take the (now weighted) mean of each mobility data column amoungst the clusters and rename cluster to fips
         clusterMeans=clusterMeans.groupby('cluster').agg({col:np.mean for col in meanCols}).reset_index().rename(columns={'cluster':'fips'})
+        # Add the cluster mobility data back to the original mobility df
         mobility_df=pd.concat([mobility_df,clusterMeans])
         fips_to_maxdeaths = df.groupby('fips')['deaths'].max()
         
@@ -751,7 +769,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
 
 
     # -%%
-    # Get number of days with > D_THRES deaths 
+    # Get number of days with >= D_THRES deaths 
         # (as pandas series)
     fips_to_daysofdata = df[df['deaths'] > train_Dfrom].groupby('fips').size()
 
