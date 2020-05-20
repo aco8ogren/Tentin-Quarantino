@@ -1,0 +1,14 @@
+Neural net
+
+Erfs on weird clusters/counties
+	determine which are weird
+	visualize cluster fits
+
+Big ol hyper parameter optimization
+
+
+If time:
+	blend mobility data with other sources
+	include other mortality data
+	smoothing
+
