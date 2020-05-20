@@ -595,7 +595,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     if train_til is not None:
         cluterDate=train_til
         train_til = int((train_til-global_dayzero)/np.timedelta64(1,'D'))
-        df = df[df['date_processed'] < train_til]
+        df = df[df['date_processed'] <= train_til]
 
 
     # -%%
