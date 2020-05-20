@@ -240,7 +240,7 @@ def alloc_fromCluster(data, cluster_ref_fln,alloc_day=None,num_alloc_days=5):
     ref_data=ref_data[['fips','date','deaths']]
     ref_data.loc[:,'date']=pd.to_datetime(ref_data.date)
     if alloc_day is not None:
-        lst_date = pd.to_datetime(alloc_day)-np.timedelta64(1,'D')
+        lst_date = pd.to_datetime(alloc_day)#-np.timedelta64(1,'D')
     else:
         # most recent date in set
         lst_date = ref_data.date.max()
