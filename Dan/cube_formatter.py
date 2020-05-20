@@ -240,7 +240,7 @@ def alloc_fromCluster(data, cluster_ref_fln,alloc_day=None,num_alloc_days=5):
     ref_data=ref_data[['fips','date','deaths']]
     ref_data.loc[:,'date']=pd.to_datetime(ref_data.date)
     if alloc_day is not None:
-        lst_date = pd.to_datetime(alloc_day)-np.timedelta64(1,'D')
+        lst_date = pd.to_datetime(alloc_day)#-np.timedelta64(1,'D')
     else:
         # most recent date in set
         lst_date = ref_data.date.max()
@@ -275,6 +275,7 @@ def alloc_fromCluster(data, cluster_ref_fln,alloc_day=None,num_alloc_days=5):
     data = np.zeros((data.shape[0],data.shape[1],len(cluster_data.index)))*np.nan
     ##-- Iterate through clusters in input cube and allocate predictions
     ind = 0     
+    noDataCounter=0
     for i,clust in enumerate(cube_cluster_data):
         # Get rows related to the given state
         clust_rows = cluster_data[cluster_data['cluster'] == clust]
@@ -284,9 +285,10 @@ def alloc_fromCluster(data, cluster_ref_fln,alloc_day=None,num_alloc_days=5):
         
         fips_data=fips_data[(first_date <= fips_data.date) &  (fips_data.date<= lst_date)].groupby('fips').mean()
         tot_deaths=fips_data.deaths.sum()
-        cnty_deaths=fips_data.loc[clust_rows.fips].deaths.values/tot_deaths
-        
+        cnty_deaths=fips_data.deaths.values/tot_deaths
+        noDataCounter+=len(fips_list)-len(fips_data)
         # Calculate proportion of deaths per county
+
         
 
         # cnty_deaths2 = (clust_rows['deaths']/clust_rows['clusterDeaths'].iloc[0]).values
@@ -308,19 +310,31 @@ def alloc_fromCluster(data, cluster_ref_fln,alloc_day=None,num_alloc_days=5):
         # Preallocate matrix
         beef = np.zeros((1,)+data_clust.shape[1:])
         # Populate beef with fips codes 
-        beef[0,:,:] = clust_rows['fips'].values
+        # beef[0,:,:] = clust_rows['fips'].values
+        beef[0,:,:] = fips_data.index.values
+
 
         #-- Place result into final matrix
-        data[1:,:,ind:ind+len(clust_rows.index)] = cnty_deaths
+        data[1:,:,ind:ind+len(fips_data.index)] = cnty_deaths
         # Add county FIPS beef
-        data[0,:,ind:ind+len(clust_rows.index)] = beef
-
+        data[0,:,ind:ind+len(fips_data.index)] = beef
 
         #-- Increase index of current matrix allocation
-        ind += len(clust_rows.index)
+        ind += len(fips_data.index)
 
-    if np.sum(np.isnan(data)) != 0:
-        raise ValueError('An element of the output matrix is unallocated')
+    # Find number of unallocated panes by counting all nans in cube and dividing by pane size
+    numNanPanes=np.count_nonzero(np.isnan(data))/data.shape[0]/data.shape[1]
+    # If there are some counties with no data:
+        # 
+    if noDataCounter>0:
+        if numNanPanes!=noDataCounter:
+            raise ValueError('An element of the output matrix is unallocated')
+        else:
+            data=data[:,:,:-(noDataCounter)]
+    else:
+        if np.sum(np.isnan(data)) != 0:
+            raise ValueError('An element of the output matrix is unallocated')
+
 
     ##-- Append original data that was already county-based 
     data = np.dstack((data_cnty, data))

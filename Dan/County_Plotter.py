@@ -46,11 +46,11 @@ isCumul     = False          # Flag to denote that the plot should be cumulative
 global_dayzero = pd.to_datetime('2020 Jan 21')
 # Day until which model was trained (train_til in epid model)
     # Leave as None to not display a boundary
-boundary = '2020 April 23'
+boundary = '2020 May 10'
 # Day to use for allocating to counties
     # Leave as None to use most recent date
     # OR use '2020-04-23' format to allocate based on proportions from that day
-alloc_day = '2020-04-23'
+alloc_day = '2020-05-10'
 # Flag to choose whether to save .svg of figures
 is_saveSVG = False
 # Filename (including path) for saving .svg files when is_saveSVG=True
@@ -61,11 +61,14 @@ svg_flm = 'Dan/MidtermFigs/CountyWideDaily2/'
 #-- Files to utilize
 # Filename for cube of model data
     # should be (row=sample, col=day, pane=state) with state FIPS as beef in row1
-mat_model   = 'Alex/wkspc.mat'#'Dan\\train_til_today.csv'
+mat_model   = 'clustering.mat'#'Dan\\train_til_today.csv'
 # Reference file to treat as "true" death counts 
 csv_true    = 'data\\us\\covid\\nyt_us_counties_daily.csv'  # daily county counts (also used for allocating deaths when req.)
 csv_ST_true = 'data\\us\\covid\\nyt_us_states.csv'          # this is cumulative ONLY; no _daily version exists
 csv_CT_cumul_true = 'data\\us\\covid\\nyt_us_counties.csv'  # county cumulative counts
+# reference file for clustering df
+cluster_ref_fln=os.path.splitext(mat_model)[0] + '_clusters.csv'
+
 
 
 #-- Read and format true data to have correct columns
@@ -101,7 +104,7 @@ model_cube = cf.read_cube(mat_model)
 if isComputeDaily:
     model_cube = cf.calc_daily(model_cube)
 if isAllocCounties:
-    model_cube = cf.alloc_counties(model_cube, csv_true, alloc_day=alloc_day)
+    model_cube = cf.alloc_fromCluster(model_cube, cluster_ref_fln, alloc_day=alloc_day)
 
 
 #-- Calculate quantiles for all modeled counties

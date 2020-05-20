@@ -30,15 +30,15 @@ if __name__ == '__main__':
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
-    sv_flnm_mat = r'Alex\PracticeOutputs\clustering.mat'
+    sv_flnm_mat = 'Dan\\PracticeOutputs\\Debugging.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
     #-- Multiprocessing settings
     # Flag to choose whether multiprocessing should be used
-    isMultiProc = True
+    isMultiProc = False
     # Number of cores to use (logical cores, not physical cores)
-    workers = 20
+    workers = 3
 
 
     #-- Filtering parameters
@@ -69,11 +69,11 @@ if __name__ == '__main__':
 
     #-- Sub-select counties to train on
     # Flag to choose whether to sub-select
-    isSubSelect = False
+    isSubSelect = True
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
-    just_train_these_fips = [36061, 36059, 21143, 21145, 36103, 36119, 34013, 34003, 
-                             6037,  9001,  34017, 26125, 25017, 34039, 26099, 9003] #  21143.0,21145.0, 21147.0,21149.0, 21151.0, 21155.0, 21157.0, 21159.0, 21161.0, 21163.0, 21165.0, 21167.0, 21169.0, 21171.0, 21173.0, 21175.0, 21177.0, 21179.0, 21181.0, 21183.0
+    just_train_these_fips = [6059, 6085, 6075, 55025, 48029, 31055]
+    #[36061, 36059, 26163, 17031, 36103, 36119, 34013, 34003, 6037,  9001,  34017, 26125, 25017, 34039, 26099, 9003] 
 
 
     #-- Method used for choosing initial conditions
