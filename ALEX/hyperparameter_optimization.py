@@ -29,13 +29,16 @@ def test_error(HYPERPARAMS,train_til,test_from,test_til):
     temp_raw_npy = 'temp_raw_snowflake.npy'
     temp_raw_mat = 'temp_raw_snowflake.mat'
     temp_processed_csv = 'temp_processed_snowflake.csv'
+    isCluster = HYPERPARAMS[7]
+    # if HYPERPARAMS[7] == 1:
+    #     isCluster = True
     SEIIRQD_model(HYPERPARAMS = HYPERPARAMS[0:4],isSaveRes = True,sv_flnm_np = temp_raw_npy,
                     sv_flnm_mat = temp_raw_mat,isMultiProc = True,workers = 20,train_til = train_til,
                     train_Dfrom = 7,min_train_days = 5,isSubSelect = False, # CHANGE isSubSelect TO FALSE WHEN DONE DEBUGGING! New York is 36061
                     just_train_these_fips = None,isPlotBokeh = False,
                     isConstInitCond=False,init_vec=HYPERPARAMS[4:],
-                    verbosity = 4,
-                    isCluster = False)
+                    verbosity = 2,
+                    isCluster = isCluster)
     format_file_for_evaluation(temp_raw_mat,
                                temp_processed_csv,
                                isAllocCounties = True,
@@ -65,12 +68,14 @@ if __name__ == '__main__':
                             (0,.5),            # alpha: the alpha from LeakyReLU determines how much to penalize the SEIIRQD objective function for over predicting the symptomatic infected
                             (0.1,5),       # init_vec #1
                             (.001,1),      # init_vec #2
-                            (.0001,10)
+                            (.0001,10),    # init_vec #3
+                            [True,False]          # boolean whether or not to cluster
                     ],   
                     # x0 = [.1,100,5,0,4.901,0.020,0.114],   
+                    # y0 = [],
                     acq_func="EI",      # the acquisition function
-                    n_calls=1,          # the number of evaluations of f
-                    n_random_starts=1,  # the number of random initialization points
+                    n_calls=80,          # the number of evaluations of f
+                    n_random_starts=20,  # the number of random initialization points
                     noise=0.1**2,       # the noise level (optional)
                     random_state=1234,  # the random seed
                     callback = [checkpoint_saver],
