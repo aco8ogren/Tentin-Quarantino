@@ -438,7 +438,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
                     isPlotBokeh = False, 
                     isConstInitCond = True, init_vec=(2, 0.85, 3),
                     verbosity = 3,
-                    isCluster=False, cluster_max_radius = 100000):
+                    isCluster=False, cluster_max_radius = 2):
                     
 
     tic0 = time.time()
@@ -562,6 +562,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         #-- Set day until which to train
     if train_til is not None:
         # User provided a boundary date for training; translate to absolute time w.r.t global_dayzero
+        train_til_for_erf = train_til.replace(' ','-')
         train_til = pd.to_datetime(train_til)
         if verbosity >= 2:
             print('---- Only training until: ', train_til)
@@ -689,7 +690,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         # Generate dataframe (clusteringDF) of clusters with at least D_THRES deaths ON clusterDate (train_til). This dataframe
             # relates each county to its cluster number, along with some 
             # additional data such as deaths on train_till for the counties and clusters 
-        clusteringDF,list_of_fips_to_erf=JMC(list_of_low_death_fips,clusterDate,D_THRES,Fpath=sv_clust_flnm)
+        clusteringDF,list_of_fips_to_erf=JMC(list_of_low_death_fips,clusterDate,D_THRES,Fpath=sv_clust_flnm,cluster_radius = cluster_max_radius)
         # get list of all counties that were successfully clustered (without regard to deaths in cluster)
         list_of_clustered_fips=clusteringDF.fips.unique()
         # list of cluster artificial fips for clusters with total deaths at least D_THRES
@@ -743,11 +744,13 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         erf_cube = copy_of_erf_model.predict_counties(erf_df, list_of_fips_to_erf,
                                                                     last_date_pred='2020-06-30', 
                                                                     out_file='erf_model_predictions.csv', 
-                                                                    boundary_date=train_til,
+                                                                    boundary_date=train_til_for_erf,
                                                                     key='deaths',
                                                                     verbose = True)
         toc_erf = time.time()
         print('Fitting erf done. Time elapsed', np.round(toc_erf-tic_erf,2),'sec')
+    else:
+        erf_cube = None
 
         
         
@@ -788,13 +791,13 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     # -%% 
     # Get first day that each county passed D_THRES
         # (as a pandas series)
-    fips_to_dayzero = df[df['deaths'] > train_Dfrom].groupby('fips')['date_datetime'].min()
+    fips_to_dayzero = df[df['deaths'] >= train_Dfrom].groupby('fips')['date_datetime'].min()
 
 
     # -%%
     # Get number of days with >= D_THRES deaths 
         # (as pandas series)
-    fips_to_daysofdata = df[df['deaths'] > train_Dfrom].groupby('fips').size()
+    fips_to_daysofdata = df[df['deaths'] >= train_Dfrom].groupby('fips').size()
 
 
     # -%% 
@@ -879,7 +882,8 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         # Call parfun directly
         res = par_fun(*(args[0]))
 
-    res = np.dstack((res,erf_cube))
+    if erf_cube is not None:
+        res = np.dstack((res,erf_cube))
     
     if verbosity >= 1:
         print('--------Total Time: %f----------'%(time.time()-tic0))

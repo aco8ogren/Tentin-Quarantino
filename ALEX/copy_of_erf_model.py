@@ -90,13 +90,14 @@ def make_erf_quant_predictions(df, county_fips, key='deaths', last_date_pred='20
     num_days = int(utils.process_date(last_date_pred, df) - utils.process_date(start_date, df))
     data = utils.get_region_data(df, county_fips)
     if len(data) == 0:  # If there's no data for this FIPS, just return zeroes
-        return np.zeros((num_days, 9))
+        return np.zeros((num_days, 100))
     first_date_obv_proc = np.min(data['date_processed'].values)
     boundary = None if boundary_date is None else int(utils.process_date(boundary_date, df) - first_date_obv_proc + 1)
+    # boundary = boundary_date
 
     x = data['date_processed'].values[:boundary]
     if len(x) == 0:  # If there's no data for this FIPS, just return zeroes
-        return np.zeros((num_days, 9))
+        return np.zeros((num_days, 100))
     if start_date is None:
         start_date_proc = first_date_obv_proc
     else:
@@ -109,7 +110,7 @@ def make_erf_quant_predictions(df, county_fips, key='deaths', last_date_pred='20
 
     y = data[key].values[:boundary]
     if np.max(y) == 0:  # If all data we have for this FIPS is zeroes, just return zeroes
-        return np.zeros((num_days, 9))
+        return np.zeros((num_days, 100))
     thresh_y = y[y >= 10]  # Isolate all days with at least 10 cases/deaths
     # If we have fewer than 5 days with substantial numbers of cases/deaths there isn't enough information to do an
     # erf fit, so just do a simple linear fit instead
@@ -149,7 +150,7 @@ def make_erf_quant_predictions(df, county_fips, key='deaths', last_date_pred='20
     # If data didn't start for this FIPS until after our start date, pad the beginning with zeroes
     if len(all_deciles) < num_days:
         all_deciles = np.concatenate((np.zeros((num_days - len(all_deciles), 100)), all_deciles))
-    return all_deciles, all_samples
+    return all_deciles
 
 def predict_counties(df, list_of_fips, last_date_pred='2020-06-30', out_file='erf_model_predictions.csv', boundary_date=None,
                          key='deaths',verbose = True):
@@ -163,8 +164,9 @@ def predict_counties(df, list_of_fips, last_date_pred='2020-06-30', out_file='er
     for fips_idx, fips in enumerate(list_of_fips):
         if verbose:
             print('Processing FIPS', fips)
-        all_deciles, all_samples = make_erf_quant_predictions(df, fips, last_date_pred=last_date_pred, boundary_date=boundary_date,
-                                           key=key)
+        all_deciles = make_erf_quant_predictions(df, fips, last_date_pred=last_date_pred,
+                                                                boundary_date=boundary_date,
+                                                                key=key)
         preds = all_deciles
         preds = np.transpose(preds)
 
