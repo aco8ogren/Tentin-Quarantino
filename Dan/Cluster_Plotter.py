@@ -1,17 +1,10 @@
-# %%
 import pandas as pd
 import numpy as np 
 import git 
 import os
 import sys 
-import bokeh.io
-import bokeh.application
-import bokeh.application.handlers
-import bokeh.models
-import bokeh.plotting as bkp
-from bokeh.models import Span
-import holoviews as hv
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 #-- Setup paths
 # Get parent directory using git
@@ -25,9 +18,8 @@ sys.path.append('Dan')
 import cube_formatter as cf
 
 
-#-- Setup bokeh
-bokeh.io.output_notebook()
-hv.extension('bokeh')
+#-- Setup interactive matplotlib
+%matplotlib widget
 
 #-- Control parameters
 # Top N clusters to plot with the most deaths
@@ -35,7 +27,7 @@ hv.extension('bokeh')
 plotN = 20
 # Cluster fips to plot
     # If isShowAllocations=True, all counties from the following cluster will be plotted
-clst2Show = 10              # "FIPS" of cluster to show
+clst2Show = 20              # "FIPS" of cluster to show
 # Data Manipulation flags (should match those used in creating submission file)
 isComputeDaily = False           # Flag to translate cummulative data to daily counts
 #- Plot-type control flags
@@ -189,34 +181,26 @@ if isShowClusters:
             # Set y-axis label to show deaths/day
             ylab = '# deaths/day'
 
-# %%
-
         # Create figure for the plot
-        p = bkp.figure( plot_width=600,
-                        plot_height=400,
-                        title = ptit,
-                        x_axis_label = 't (days since %s)'%global_dayzero.date(),
-                        y_axis_label = ylab)
-
-        # CONSIDER FLIPPING THE ORDER OF QUANTILES TO SEE IF IT FIXES THE PLOTTING
-        # Plot uncertainty regions
-        for i in range(4):
-            p.varea(x=t_model, y1=cnty_model[i,:], y2=cnty_model[-i-1,:], color='black', fill_alpha=perc_list[i]/100)  
+        fig, ax = plt.subplots(figsize=(5,4))
+        ax.set_title(ptit)
+        ax.set_xlabel('t (days since %s)'%global_dayzero.date())
+        ax.set_ylabel(ylab)
 
         # Plot 50th percentile line
-        p.line(t_model, cnty_model[4,:], color = 'black', line_width = 1)
+        ax.plot(t_model, cnty_model[4,:], color='black')
+
+        # Plot uncertainty regions
+        for i in range(4):
+            ax.fill_between(t_model, cnty_model[i,:], cnty_model[-i-1,:], color='black', alpha=perc_list[i]/100)
 
         # Plot true deaths
-        p.circle(t_true, clst_deaths.values, color ='black')
+        ax.scatter(t_true, clst_deaths.values, color='black')
 
         # Apply training boundary if desired
         if boundary is not None:
             bd_day = (pd.to_datetime(boundary)-global_dayzero)/np.timedelta64(1, 'D')
-            vline = Span(location=bd_day, dimension='height', line_color='black', line_width=2)
-            p.renderers.extend([vline])
-
-        # Show plot
-        bokeh.io.show(p)
+            ax.axvline(x=bd_day, color='black')
 
         # Save output figures if desired
         if is_saveSVG:
@@ -258,7 +242,7 @@ if isShowAllocations:
         # cubes now have 9 rows, one for each of the quantiles requested
         #   The cols and panes are the same format as the input cube
 
-
+ 
     #-- Extract fips in final cube 
         # (yes, I know this is redundant... too lazy to change)
     cnty_cube_fips   = cnty_cube[0,0,:]        # Get fips ID's
@@ -298,31 +282,24 @@ if isShowAllocations:
             ylab = '# deaths/day'
 
         # Create figure for the plot
-        p = bkp.figure( plot_width=600,
-                        plot_height=400,
-                        title = ptit,
-                        x_axis_label = 't (days since %s)'%global_dayzero.date(),
-                        y_axis_label = ylab)
-
-        # CONSIDER FLIPPING THE ORDER OF QUANTILES TO SEE IF IT FIXES THE PLOTTING
-        # Plot uncertainty regions
-        for i in range(4):
-            p.varea(x=t_model, y1=cnty_model[i,:], y2=cnty_model[-i-1,:], color='black', fill_alpha=perc_list[i]/100)  
+        fig, ax = plt.subplots(figsize=(5,4))
+        ax.set_title(ptit)
+        ax.set_xlabel('t (days since %s)'%global_dayzero.date())
+        ax.set_ylabel(ylab)
 
         # Plot 50th percentile line
-        p.line(t_model, cnty_model[4,:], color = 'black', line_width = 1)
+        ax.plot(t_model, cnty_model[4,:], color='black')
+
+        # Plot uncertainty regions
+        for i in range(4):
+            ax.fill_between(t_model, cnty_model[i,:], cnty_model[-i-1,:], color='black', alpha=perc_list[i]/100)
 
         # Plot true deaths
-        p.circle(t_true, cnty_true_df['deaths'], color ='black')
+        ax.scatter(t_true, cnty_true_df['deaths'], color ='black')
 
-        # Apply training boundary if desired
         if boundary is not None:
             bd_day = (pd.to_datetime(boundary)-global_dayzero)/np.timedelta64(1, 'D')
-            vline = Span(location=bd_day, dimension='height', line_color='black', line_width=2)
-            p.renderers.extend([vline])
-
-        # Show plot
-        bokeh.io.show(p)
+            ax.axvline(x=bd_day, color='black')
 
         # Save output figures if desired
         if is_saveSVG:
@@ -330,3 +307,6 @@ if isShowAllocations:
             # Format filename
             suffix = ('%s_%s_%d.svg'%(cnty_true_df['state'].iloc[0],cnty_true_df['county'].iloc[0],cnty)).replace(' ','')
             bokeh.io.export_svgs(p, filename= svg_flm + suffix)
+
+
+plt.show()
