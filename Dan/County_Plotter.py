@@ -35,12 +35,12 @@ hv.extension('bokeh')
 plotN = 20
 # Data Manipulation flags (should match those used in creating submission file)
 isAllocCounties = True          # Flag to distribue state deaths amongst counties
-isComputeDaily = True           # Flag to translate cummulative data to daily counts
+isComputeDaily = False           # Flag to translate cummulative data to daily counts
 #- Plot-type control flags
 isStateWide = False          # Flag to plot state-wise data (will use nyt_states file for true_df)
                             #   The raw cube won't be affected so make sure it is also state-wise data
                             #   AND cumulative since there is only cumulative nyt_us_states data
-isCumul     = False          # Flag to denote that the plot should be cumulative, not daily deaths
+isCumul     = True          # Flag to denote that the plot should be cumulative, not daily deaths
                             # ** Only affects county-level data since state-wide is implicitly cumulative
                             #   This sets which county-wide nyt file is used and sets the plot y-axis label
 # Key days (should match those used in creating the cube)
@@ -140,6 +140,21 @@ true_df = true_df[true_df.fips.isin(model_fips)]
 # Add column of dates in datetime format
 true_df['dateDT'] = pd.to_datetime(true_df['date'].values)
 
+if isAllocCounties:
+    #-- Read in cluster-to-fips translation (used for showing which counties were clustered)
+    # Load cluster data
+    fips_to_clst = pd.read_csv(cluster_ref_fln)
+    # Extract useful columns
+    fips_to_clst = fips_to_clst[['fips', 'cluster']]
+    # Cast fips and cluster values to int
+    fips_to_clst['fips'] = fips_to_clst['fips'].astype('int')
+    fips_to_clst['cluster'] = fips_to_clst['cluster'].astype('int')
+    # Cast to pandas series
+    fips_to_clst = pd.Series(fips_to_clst.set_index('fips')['cluster'])
+else:
+    # Define empty list so that "in" check later doesn't cause errors
+    fips_to_clst = []
+
 #-- Create directory for output .svg files if necessary
 if is_saveSVG:
     # Append sample filename just to get proper path
@@ -168,6 +183,10 @@ for ind, cnty in enumerate(model_fips):
     else:
         # Include county in title
         ptit = 'SEIIRD+Q Model: %s, %s (%d)'%(cnty_true_df['county'].iloc[0],cnty_true_df['state'].iloc[0], cnty)
+
+    if cnty in fips_to_clst:
+        # Add cluster ID when the county was clustered
+        ptit += ' [Cluster %d]'%fips_to_clst[cnty]
 
     # Format y-axis label for cumulative vs. daily plots
     if isCumul or isStateWide:
