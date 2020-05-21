@@ -30,15 +30,15 @@ if __name__ == '__main__':
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
-    sv_flnm_mat = 'Dan\\PracticeOutputs\\Debugging.mat'
+    sv_flnm_mat = 'Alex\\PracticeOutputs\\Debugging.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
     #-- Multiprocessing settings
     # Flag to choose whether multiprocessing should be used
-    isMultiProc = False
+    isMultiProc = True
     # Number of cores to use (logical cores, not physical cores)
-    workers = 3
+    workers = 20
 
 
     #-- Filtering parameters
@@ -66,13 +66,15 @@ if __name__ == '__main__':
         # When False, the code will run as it used to
     isCluster = True
 
+    cluster_max_radius = 2
+
 
     #-- Sub-select counties to train on
     # Flag to choose whether to sub-select
-    isSubSelect = True
+    isSubSelect = False
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
-    just_train_these_fips = [6059, 6085, 6075, 55025, 48029, 31055]
+    just_train_these_fips = [17097]#[6059, 6085, 6075, 55025, 48029, 31055]
     #[36061, 36059, 26163, 17031, 36103, 36119, 34013, 34003, 6037,  9001,  34017, 26125, 25017, 34039, 26099, 9003] 
 
 
@@ -135,7 +137,7 @@ if __name__ == '__main__':
 # %% Setup evaluator run
 
     #-- Flag to choose whether to evaluate a .csv file
-    isEval = False
+    isEval = True
 
     #-- When model was not formatted, provide a filename to evaluate
         # if a model was formatted, that filename will automatically be used
@@ -216,7 +218,7 @@ if __name__ == '__main__':
                             isConstInitCond = isConstInitCond,
                             init_vec = init_vec,
                             verbosity = verbosity,
-                            isCluster = isCluster)
+                            isCluster = isCluster, cluster_max_radius = cluster_max_radius)
             if isSaveRes and not isRunInitConHyper:
                 print('*** Model results saved to:\n    %s\n    %s'%(sv_flnm_mat, sv_flnm_np))
                 

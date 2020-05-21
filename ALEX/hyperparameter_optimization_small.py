@@ -25,9 +25,9 @@ def test_error(HYPERPARAMS,train_til,test_from,test_til):
     # Given a set of hyperparameters and days to train from and until,
     # this function trains a model, then evaluates and returns pinball loss
     fips = [6037] # NYC is 36061, LA is 6037
-    temp_raw_npy = 'temp_raw_snowflake.npy'
-    temp_raw_mat = 'temp_raw_snowflake.mat'
-    temp_processed_csv = 'temp_processed_snowflake.csv'
+    temp_raw_npy = 'temp_raw_superior.npy'
+    temp_raw_mat = 'temp_raw_superior.mat'
+    temp_processed_csv = 'temp_processed_superior.csv'
     SEIIRQD_model(HYPERPARAMS = HYPERPARAMS,isSaveRes = True,sv_flnm_np = temp_raw_npy,
                     sv_flnm_mat = temp_raw_mat,isMultiProc = False,workers = 1,train_til = train_til,
                     train_Dfrom = 7,min_train_days = 5,isSubSelect = True, # CHANGE isSubSelect TO FALSE WHEN DONE DEBUGGING! New York is 36061
