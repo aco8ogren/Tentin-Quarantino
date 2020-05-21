@@ -31,6 +31,7 @@ hv.extension('bokeh')
 
 #-- Control parameters
 # Top N counties to plot with the most deaths
+    # Set to -1 to plot all
 plotN = 20
 # Data Manipulation flags (should match those used in creating submission file)
 isAllocCounties = True          # Flag to distribue state deaths amongst counties
@@ -67,6 +68,8 @@ csv_true    = 'data\\us\\covid\\nyt_us_counties_daily.csv'  # daily county count
 csv_ST_true = 'data\\us\\covid\\nyt_us_states.csv'          # this is cumulative ONLY; no _daily version exists
 csv_CT_cumul_true = 'data\\us\\covid\\nyt_us_counties.csv'  # county cumulative counts
 # reference file for clustering df
+    # This assignment as done below assumes that the right file just has _clusters.csv appended.
+    # You can enter the actual path manually if you'd like
 cluster_ref_fln=os.path.splitext(mat_model)[0] + '_clusters.csv'
 
 
