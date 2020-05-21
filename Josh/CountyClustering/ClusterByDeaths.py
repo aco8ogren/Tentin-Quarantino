@@ -8,7 +8,7 @@ cwd=repo.working_dir
 os.chdir(cwd)
 
 
-def JoshMeansClustering(fipsList,date,d_thres=50,Fpath=None):
+def JoshMeansClustering(fipsList,date,d_thres=50,cluster_radius=1e6,Fpath=None):
     covidDF=pd.read_csv('data/us/covid/nyt_us_counties.csv')
     covidDF['date']=pd.to_datetime(covidDF['date'])
     if date is not None:
@@ -91,7 +91,17 @@ def JoshMeansClustering(fipsList,date,d_thres=50,Fpath=None):
     ClusterDF['cluster']=ClusterDF['cluster'].astype(int)
 
     ClusterDF.loc[:,'cluster'] += 1
+    ClusterDF['centerWeights']=ClusterDF.deaths/ClusterDF.clusterDeaths
+    ClusterDF['weightedLat']=ClusterDF.lat*ClusterDF.centerWeights
+    ClusterDF['weightedLong']=ClusterDF.long*ClusterDF.centerWeights
+    ClusterDF['clusterLat']=ClusterDF.groupby('cluster')['weightedLat'].transform(np.sum)
+    ClusterDF['clusterLong']=ClusterDF.groupby('cluster')['weightedLong'].transform(np.sum)
+    ClusterDF['distance']=((ClusterDF.clusterLat-ClusterDF.lat)**2+(ClusterDF.clusterLong-ClusterDF.long)**2)**(.5)
+    fips_to_erf=np.sort(ClusterDF[ClusterDF.distance>cluster_radius].fips.unique())
+    ClusterDF=ClusterDF[ClusterDF.distance<=cluster_radius]
+    ClusterDF.drop(columns=['centerWeights','weightedLat','weightedLong'],inplace=True)
+
 
     if Fpath is not None:
         ClusterDF.to_csv(Fpath)
-    return ClusterDF
+    return ClusterDF, fips_to_erf
