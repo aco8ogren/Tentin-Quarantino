@@ -34,7 +34,7 @@ isComputeDaily = False           # Flag to translate cummulative data to daily c
 isCumul     = True          # Flag to denote that the plot should be cumulative, not daily deaths
 # NOTE: the following two flags are independent of each other (ie. you can run either, or, or both)
 isShowClusters = True       # Flag to denote that each cluster should be plotted on its own
-isShowAllocations = True    # Flag to denote that the counties within clst2Show should be shown
+isShowAllocations = False    # Flag to denote that the counties within clst2Show should be shown
 # Key days (should match those used in creating the cube)
 global_dayzero = pd.to_datetime('2020 Jan 21')
 # Day until which model was trained (train_til in epid model)
@@ -307,6 +307,3 @@ if isShowAllocations:
             # Format filename
             suffix = ('%s_%s_%d.svg'%(cnty_true_df['state'].iloc[0],cnty_true_df['county'].iloc[0],cnty)).replace(' ','')
             bokeh.io.export_svgs(p, filename= svg_flm + suffix)
-
-
-plt.show()
