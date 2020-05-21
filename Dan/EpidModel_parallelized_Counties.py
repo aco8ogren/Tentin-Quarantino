@@ -689,7 +689,8 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         # Generate dataframe (clusteringDF) of clusters with at least D_THRES deaths ON clusterDate (train_til). This dataframe
             # relates each county to its cluster number, along with some 
             # additional data such as deaths on train_till for the counties and clusters 
-        clusteringDF=JMC(list_of_low_death_fips,clusterDate,D_THRES,Fpath=sv_clust_flnm)
+        clusteringDF,list_of_fips_to_erf=JMC(list_of_low_death_fips,clusterDate,D_THRES,cluster_radius=2,Fpath=sv_clust_flnm)
+        
         # get list of all counties that were successfully clustered (without regard to deaths in cluster)
         list_of_clustered_fips=clusteringDF.fips.unique()
         # list of cluster artificial fips for clusters with total deaths at least D_THRES
