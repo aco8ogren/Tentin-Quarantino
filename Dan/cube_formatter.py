@@ -533,7 +533,7 @@ def alloc_NN(data,retrain=True,alloc_day=None,cluster_ref_fln=None,numDeaths=5,n
 
         
 
-        noDataCounter+=len(notTrainedFips)
+        
         # Calculate proportion of deaths per county
 
         
@@ -574,6 +574,7 @@ def alloc_NN(data,retrain=True,alloc_day=None,cluster_ref_fln=None,numDeaths=5,n
     numNanPanes=np.count_nonzero(np.isnan(data))/data.shape[0]/data.shape[1]
     # If there are some counties with no data:
         # 
+    noDataCounter=len(notTrainedFips)
     if noDataCounter>0:
         if numNanPanes!=noDataCounter:
             raise ValueError('An element of the output matrix is unallocated')
