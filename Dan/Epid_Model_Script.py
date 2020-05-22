@@ -22,11 +22,10 @@ if __name__ == '__main__':
     #-- Flag to choose whether to train the model
         # If this is true, the output file from this run will be used for
         # the remainder of the sections
-    isTrainModel = True
-
+    isTrainModel = False
     #-- Define control parameters
     # Flag to choose whether to save the results or not
-    isSaveRes = True
+    isSaveRes = False
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
@@ -69,7 +68,7 @@ if __name__ == '__main__':
 
     #-- Sub-select counties to train on
     # Flag to choose whether to sub-select
-    isSubSelect = True
+    isSubSelect = False
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
     just_train_these_fips = [6059, 6085, 6075, 55025, 48029, 31055]
@@ -114,18 +113,35 @@ if __name__ == '__main__':
 
     #-- Define control parameters
     # Flag to distribue state deaths amongst counties
-    isAllocCounties = True
+    isAllocCounties = False
     # Allocating using the mean number of num_alloc_days days BEFORE alloc_day
     num_alloc_days=5
     alloc_day=train_til
     # Flag to translate cummulative data to daily counts
     isComputeDaily = True
 
+    # Flag to distribute deaths with neural net
+    isAllocNN=True
+    # Number of days of death inputs
+    numDeaths=5
+    # Number of days of cases inputs
+    numCases=5
+    # Number of days of mobility inputs
+    numMobility=5
+    # Number of days of deaths outputs to average over
+    lenOutput=5
+    # Flag to remove data points with zero deaths for inputs and output
+    remove_sparse=False
+    # Flag to retrain neural net or just look for model in directory
+    retrain=True
+    # Directory to save or load model from
+    modelDir=r'Josh\Alloc_NN\ModelSaves\Sparse'
+
 
 
     #-- When a model was not trained, provide filename to format
         # if a model was trained, that filename will automatically be used
-    format_flnm_in = 'Alex/PracticeOutputs/testing_clustering.mat'
+    format_flnm_in = 'clusteringCopySparse.mat'
 
     #-- Provide filename for output file 
     format_flnm_out = os.path.splitext(format_flnm_in)[0] + '.csv'
@@ -135,20 +151,20 @@ if __name__ == '__main__':
 # %% Setup evaluator run
 
     #-- Flag to choose whether to evaluate a .csv file
-    isEval = False
-
+    isEval = True
     #-- When model was not formatted, provide a filename to evaluate
         # if a model was formatted, that filename will automatically be used
-    eval_flnm_in = 'Alex/PracticeOutputs/testing_clustering.csv'
+    eval_flnm_in = 'clusteringCopySparse.csv'
 
     #-- Day from which we should evaluate 
         # in format 'YYYY-MM-DD'
-    eval_start_day = '2020-04-24'
+    eval_start_day = '2020-05-10'
 
     #-- Day until which we should evaluate
         # in format 'YYYY-MM-DD'
         # Set to None to evaluate until most recent day of data
-    eval_end_day = '2020-05-05'
+    # eval_end_day = '2020-05-05'
+    eval_end_day = None
 
 
 # %% (OPTIONAL) Define parameters for init conditional optimization
@@ -228,12 +244,20 @@ if __name__ == '__main__':
             if not isRunInitConHyper:
                 print('*** Input filename:\n    %s'%format_flnm_in)
 
-            format_file_for_evaluation(format_flnm_in,
+            format_file_for_evaluation( format_flnm_in,
                                         format_flnm_out,
                                         isAllocCounties = isAllocCounties,
                                         isComputeDaily = isComputeDaily,
                                         alloc_day=alloc_day,
-                                        num_alloc_days=num_alloc_days)
+                                        num_alloc_days=num_alloc_days,
+                                        isAllocNN=isAllocNN,
+                                        retrain=retrain,
+                                        numDeaths=numDeaths,
+                                        numCases=numCases,
+                                        numMobility=numMobility,
+                                        lenOutput=lenOutput,
+                                        remove_sparse=remove_sparse,
+                                        modelDir=modelDir)
 
 
             if not isRunInitConHyper:
@@ -286,6 +310,7 @@ if __name__ == '__main__':
         plot_convergence(res)
     else:
         # Perform a regular run of the code
+        # runFull(init_vec)
         runFull(init_vec)
 
 
