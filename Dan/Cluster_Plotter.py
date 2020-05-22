@@ -27,14 +27,14 @@ import cube_formatter as cf
 plotN = 20
 # Cluster fips to plot
     # If isShowAllocations=True, all counties from the following cluster will be plotted
-clst2Show = 25              # "FIPS" of cluster to show
+clst2Show = 15              # "FIPS" of cluster to show
 # Data Manipulation flags (should match those used in creating submission file)
 isComputeDaily = False           # Flag to translate cummulative data to daily counts
 #- Plot-type control flags
 isCumul     = True          # Flag to denote that the plot should be cumulative, not daily deaths
 # NOTE: the following two flags are independent of each other (ie. you can run either, or, or both)
 isShowClusters = True       # Flag to denote that each cluster should be plotted on its own
-isShowAllocations = False    # Flag to denote that the counties within clst2Show should be shown
+isShowAllocations = True    # Flag to denote that the counties within clst2Show should be shown
 # Key days (should match those used in creating the cube)
 global_dayzero = pd.to_datetime('2020 Jan 21')
 # Day until which model was trained (train_til in epid model)
@@ -54,7 +54,7 @@ svg_flm = 'Dan/MidtermFigs/CountyWideDaily2/'
 #-- Files to utilize
 # Filename for cube of model data
     # should be (row=sample, col=day, pane=state) with state FIPS as beef in row1
-mat_model   = 'Alex\\PracticeOutputs\\fresh.mat'#'Dan\\train_til_today.csv'
+mat_model   = 'Dan\\PracticeOutputs\\fresh.mat'#'Dan\\train_til_today.csv'
 # Reference file to treat as "true" death counts 
 csv_true    = 'data\\us\\covid\\nyt_us_counties_daily.csv'  # daily county counts (also used for allocating deaths when req.)
 csv_ST_true = 'data\\us\\covid\\nyt_us_states.csv'          # this is cumulative ONLY; no _daily version exists
@@ -138,6 +138,8 @@ clst_to_fips = clst_to_fips[['fips', 'cluster']]
 # Cast fips and cluster values to int
 clst_to_fips['fips'] = clst_to_fips['fips'].astype('int')
 clst_to_fips['cluster'] = clst_to_fips['cluster'].astype('int')
+# Get number of counties in cluster (as pandas series)
+clst_to_numel = clst_to_fips.groupby('cluster').size()
 
 
 #-- PLOT only if user has requested plots on cluster-by-cluster basis
@@ -171,7 +173,7 @@ if isShowClusters:
 
         #-- Format plot
         # Include county in title
-        ptit = 'SEIIRD+Q Model: Cluster %d'%cnty
+        ptit = 'SEIIRD+Q Model: Cluster %d (numel = %d)'%(cnty, clst_to_numel[cnty])
 
         # Format y-axis label for cumulative vs. daily plots
         if isCumul:

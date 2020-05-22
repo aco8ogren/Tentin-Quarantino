@@ -24,7 +24,7 @@ if __name__ == '__main__':
     #-- Flag to choose whether to train the model
         # If this is true, the output file from this run will be used for
         # the remainder of the sections
-    isTrainModel = True
+    isTrainModel = False
 
     #-- Define control parameters
     # Flag to choose whether to save the results or not
@@ -32,7 +32,7 @@ if __name__ == '__main__':
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
-    sv_flnm_mat = 'Alex\\PracticeOutputs\\detective_work.mat'
+    sv_flnm_mat = 'Dan\\PracticeOutputs\\Debugging.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
@@ -73,7 +73,7 @@ if __name__ == '__main__':
 
     #-- Sub-select counties to train on
     # Flag to choose whether to sub-select
-    isSubSelect = False
+    isSubSelect = True
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
     just_train_these_fips = [21131, 21051, 21193, 21119, 21109, 21189, 21025, 21071, 21115,
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     #-- Method used for choosing initial conditions
         # True: Use the same vector (hardcoded) as the initial conditions for all counties
         # False: Calculate unique initial conditions for each county 
-    isConstInitCond = True
+    isConstInitCond = False
     # When calculating unique conditions for each county, define fudge factors:
     init_vec = (4.901,          # T : Is = T*cases      Old: 3.933
                 0.020,          # R : Ia = R*Itot       Old: 0.862
