@@ -285,7 +285,11 @@ def alloc_fromCluster(data, cluster_ref_fln,alloc_day=None,num_alloc_days=5):
         
         fips_data=fips_data[(first_date <= fips_data.date) &  (fips_data.date<= lst_date)].groupby('fips').mean()
         tot_deaths=fips_data.deaths.sum()
-        cnty_deaths=fips_data.deaths.values/tot_deaths
+        if tot_deaths != 0:
+            cnty_deaths=fips_data.deaths.values/tot_deaths
+        else:
+            cnty_deaths = fips_data.deaths.values*tot_deaths
+
         noDataCounter+=len(fips_list)-len(fips_data)
         # Calculate proportion of deaths per county
 
@@ -315,6 +319,7 @@ def alloc_fromCluster(data, cluster_ref_fln,alloc_day=None,num_alloc_days=5):
 
 
         #-- Place result into final matrix
+        # Place predictions
         data[1:,:,ind:ind+len(fips_data.index)] = cnty_deaths
         # Add county FIPS beef
         data[0,:,ind:ind+len(fips_data.index)] = beef

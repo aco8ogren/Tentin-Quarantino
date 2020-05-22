@@ -19,7 +19,7 @@ import cube_formatter as cf
 
 
 #-- Setup interactive matplotlib
-%matplotlib widget
+#%matplotlib widget
 
 #-- Control parameters
 # Top N clusters to plot with the most deaths
@@ -27,7 +27,7 @@ import cube_formatter as cf
 plotN = 20
 # Cluster fips to plot
     # If isShowAllocations=True, all counties from the following cluster will be plotted
-clst2Show = 20              # "FIPS" of cluster to show
+clst2Show = 25              # "FIPS" of cluster to show
 # Data Manipulation flags (should match those used in creating submission file)
 isComputeDaily = False           # Flag to translate cummulative data to daily counts
 #- Plot-type control flags
@@ -54,7 +54,7 @@ svg_flm = 'Dan/MidtermFigs/CountyWideDaily2/'
 #-- Files to utilize
 # Filename for cube of model data
     # should be (row=sample, col=day, pane=state) with state FIPS as beef in row1
-mat_model   = 'clustering.mat'#'Dan\\train_til_today.csv'
+mat_model   = 'Alex\\PracticeOutputs\\fresh.mat'#'Dan\\train_til_today.csv'
 # Reference file to treat as "true" death counts 
 csv_true    = 'data\\us\\covid\\nyt_us_counties_daily.csv'  # daily county counts (also used for allocating deaths when req.)
 csv_ST_true = 'data\\us\\covid\\nyt_us_states.csv'          # this is cumulative ONLY; no _daily version exists

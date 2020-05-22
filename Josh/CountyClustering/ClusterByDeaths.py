@@ -87,10 +87,10 @@ def JoshMeansClustering(fipsList,date,d_thres=50,cluster_radius=1e6,Fpath=None):
     deaths=ClusterDF[['deaths','cluster']].groupby('cluster').sum().rename(columns={'deaths':'clusterDeaths'})
     ClusterDF=ClusterDF.merge(deaths,left_on='cluster',right_index=True)
     ClusterDF['state']=['ClusterState']*len(ClusterDF)
-    ClusterDF['county']=['cluster%i'%i for i in ClusterDF.cluster.values]
     ClusterDF['cluster']=ClusterDF['cluster'].astype(int)
 
-    ClusterDF.loc[:,'cluster'] += 1
+    ClusterDF.loc[:,'cluster'] += 2
+    ClusterDF['county']=['cluster%i'%i for i in ClusterDF.cluster.values]
     ClusterDF['centerWeights']=ClusterDF.deaths/ClusterDF.clusterDeaths
     ClusterDF['weightedLat']=ClusterDF.lat*ClusterDF.centerWeights
     ClusterDF['weightedLong']=ClusterDF.long*ClusterDF.centerWeights

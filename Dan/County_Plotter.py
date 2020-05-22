@@ -11,6 +11,7 @@ import bokeh.plotting as bkp
 from bokeh.models import Span
 import holoviews as hv
 from pathlib import Path
+# from bokeh.io import export_png
 
 #-- Setup paths
 # Get parent directory using git
@@ -33,6 +34,7 @@ hv.extension('bokeh')
 # Top N counties to plot with the most deaths
     # Set to -1 to plot all
 plotN = 20
+shift = 20
 # Data Manipulation flags (should match those used in creating submission file)
 isAllocCounties = True          # Flag to distribue state deaths amongst counties
 isComputeDaily = False           # Flag to translate cummulative data to daily counts
@@ -62,7 +64,7 @@ svg_flm = 'Dan/MidtermFigs/CountyWideDaily2/'
 #-- Files to utilize
 # Filename for cube of model data
     # should be (row=sample, col=day, pane=state) with state FIPS as beef in row1
-mat_model   = 'clustering.mat'#'Dan\\train_til_today.csv'
+mat_model   = 'Alex\\PracticeOutputs\\fresh.mat'#'Dan\\train_til_today.csv'
 # Reference file to treat as "true" death counts 
 csv_true    = 'data\\us\\covid\\nyt_us_counties_daily.csv'  # daily county counts (also used for allocating deaths when req.)
 csv_ST_true = 'data\\us\\covid\\nyt_us_states.csv'          # this is cumulative ONLY; no _daily version exists
@@ -127,7 +129,7 @@ peak_daily_deaths = np.max(model_quants[4,:,:],0)
     # NOTE: argsort only works in ascdending order so use [::-1] to reverse
 peak_inds = np.argsort(peak_daily_deaths)[::-1]
 # Take the largest plotN counties (since these are the only ones requested by the user)
-peak_inds = peak_inds[:plotN]
+peak_inds = peak_inds[shift:plotN+shift]
 # Extract the resulting counties
     # results will be implicitly sorted due to use of argsort
 model_quants = model_quants[:,:,peak_inds]      # Get quantiles
@@ -223,6 +225,9 @@ for ind, cnty in enumerate(model_fips):
 
     # Show plot
     bokeh.io.show(p)
+    # fn = "Alex/conv/" + ptit.replace('SEIIRD+Q Model:','')
+    # export_png(p,filename=fn)
+
 
     # Save output figures if desired
     if is_saveSVG:

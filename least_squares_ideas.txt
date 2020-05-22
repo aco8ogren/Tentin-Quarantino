@@ -7,3 +7,9 @@ max_nfev = 100 ?
 verbose = 0, 1, 2
 
 ftol,xtol,gtol
+
+use a few days of zeros in the training data
+
+don't use time weighting
+
+use gp_minimize instead of least_squares

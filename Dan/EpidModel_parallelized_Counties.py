@@ -385,7 +385,12 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
 
             #-- Train the model
             tic = time.time()
-            res = least_squares(fit_leastsq_z, guesses, args=(data,mobility_data, HYPERPARAMS), bounds=np.transpose(np.array(const['ranges'])),jac = '2-point')
+            res = least_squares(fit_leastsq_z, 
+                                guesses, 
+                                args=(data,mobility_data, HYPERPARAMS), 
+                                bounds=np.transpose(np.array(const['ranges'])),
+                                jac = '2-point',
+                                verbose = 2)
             #plot_with_errors_sample_z(res, const['params'], initial_conditions, main_df, mobility_df, state, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True);
             all_s, _, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['train_Dfrom'], const, HYPERPARAMS, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
             toc = time.time()
@@ -568,27 +573,27 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
             print('---- Only training until: ', train_til)
 
     # -%% Plot the raw data for the subselection: just_train_these_fips
-    if (not isMultiProc) and isPlotBokeh:
-        for fips in just_train_these_fips:
-            county_name = df[df['fips']==fips]['county'].values[0]
-            state_name = df[df['fips']==fips]['state'].values[0]
-            ptit = '%s, %s - (%d) - RAW DATA'%(county_name, state_name, fips)
-            p = bkp.figure(plot_width=600,
-                        plot_height=400,
-                        title=ptit,
-                        x_axis_label='date',
-                        y_axis_label='# people',
-                        x_axis_type = 'datetime')
-            # death
-            p.circle(df[df['fips']==fips]['date_datetime'], df[df['fips']==fips]['deaths'], color ='black')
-            # quarantined
-            # if plot_symptomatic_infectious:
-            #     p.circle(t, data['cases'], color ='purple')
-            if train_til is not None:
-                vline = Span(location=train_til, dimension='height', line_color='black', line_width=3)
-                p.renderers.extend([vline])
-            #p.legend.location = 'top_left'
-            bokeh.io.show(p)
+    # if (not isMultiProc) and isPlotBokeh:
+    #     for fips in just_train_these_fips:
+    #         county_name = df[df['fips']==fips]['county'].values[0]
+    #         state_name = df[df['fips']==fips]['state'].values[0]
+    #         ptit = '%s, %s - (%d) - RAW DATA'%(county_name, state_name, fips)
+    #         p = bkp.figure(plot_width=600,
+    #                     plot_height=400,
+    #                     title=ptit,
+    #                     x_axis_label='date',
+    #                     y_axis_label='# people',
+    #                     x_axis_type = 'datetime')
+    #         # death
+    #         p.circle(df[df['fips']==fips]['date_datetime'], df[df['fips']==fips]['deaths'], color ='black')
+    #         # quarantined
+    #         # if plot_symptomatic_infectious:
+    #         #     p.circle(t, data['cases'], color ='purple')
+    #         if train_til is not None:
+    #             vline = Span(location=train_til, dimension='height', line_color='black', line_width=3)
+    #             p.renderers.extend([vline])
+    #         #p.legend.location = 'top_left'
+    #         bokeh.io.show(p)
 
 
     # -%%
@@ -693,8 +698,10 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         clusteringDF,list_of_fips_to_erf=JMC(list_of_low_death_fips,clusterDate,D_THRES,Fpath=sv_clust_flnm,cluster_radius = cluster_max_radius)
         # get list of all counties that were successfully clustered (without regard to deaths in cluster)
         list_of_clustered_fips=clusteringDF.fips.unique()
+
         # list of cluster artificial fips for clusters with total deaths at least D_THRES
-        list_of_fips_to_train += clusteringDF[clusteringDF.clusterDeaths >= D_THRES].cluster.unique().tolist()
+        # list_of_fips_to_train += clusteringDF[clusteringDF.clusterDeaths >= D_THRES].cluster.unique().tolist()
+        list_of_fips_to_train += clusteringDF.cluster.unique().tolist()
         # Merge clusteringDF with the main df to get clusteredDF
             # Essentially taking the clustered counties from the main df and adding a column for clusters
         clusteredDF=pd.merge(df.drop(columns=['county','state']),clusteringDF.drop(columns=['long','lat','deaths']),how='right', on = 'fips')
@@ -728,9 +735,14 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         clusterMeans=clusterMeans.groupby('cluster').agg({col:np.mean for col in meanCols}).reset_index().rename(columns={'cluster':'fips'})
         # Add the cluster mobility data back to the original mobility df
         mobility_df=pd.concat([mobility_df,clusterMeans])
+        # get rid of counties in cluster from main df
+        df= df[~df.fips.isin(list_of_clustered_fips)]
         fips_to_maxdeaths = df.groupby('fips')['deaths'].max()
+
     else:
         list_of_fips_to_erf = list_of_low_death_fips
+    
+    df= df[~df.fips.isin(list_of_fips_to_erf)]
 
     # %% 
     # Perform ERF on remaining FIPS
