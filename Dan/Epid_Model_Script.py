@@ -143,15 +143,13 @@ if __name__ == '__main__':
     # Flag to retrain neural net or just look for model in directory
     retrain=True
     # Directory to save or load model from
-    # modelDir=r'Josh\Alloc_NN\ModelSaves\2_2_2_5_True'
-    Name='%i_%i_%i_%i_%s'%(numDeaths,numCases,numMobility,lenOutput,remove_sparse)
-    modelDir=r'Josh\Alloc_NN\ModelSaves\%s'%Name
+    modelDir=r'Josh\Alloc_NN\ModelSaves\FirstNet'
 
 
 
     #-- When a model was not trained, provide filename to format
         # if a model was trained, that filename will automatically be used
-    format_flnm_in = r'Josh\PracticeOutputs\%s.mat'%Name
+    format_flnm_in = 'clusteringCopy.mat'
 
     #-- Provide filename for output file 
     format_flnm_out = os.path.splitext(format_flnm_in)[0] + '.csv'
@@ -164,8 +162,7 @@ if __name__ == '__main__':
     isEval = True
     #-- When model was not formatted, provide a filename to evaluate
         # if a model was formatted, that filename will automatically be used
-    # eval_flnm_in = 'clusteringCopy.csv'
-    eval_flnm_in = format_flnm_out
+    eval_flnm_in = 'clusteringCopy.csv'
 
     #-- Day from which we should evaluate 
         # in format 'YYYY-MM-DD'
