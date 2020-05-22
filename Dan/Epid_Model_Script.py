@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
     #-- Define control parameters
     # Flag to choose whether to save the results or not
-    isSaveRes = True
+    isSaveRes = False
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
@@ -38,7 +38,7 @@ if __name__ == '__main__':
 
     #-- Multiprocessing settings
     # Flag to choose whether multiprocessing should be used
-    isMultiProc = False
+    isMultiProc = True
     # Number of cores to use (logical cores, not physical cores)
     workers = 20
 
@@ -76,11 +76,14 @@ if __name__ == '__main__':
     isSubSelect = True
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
-    just_train_these_fips = [21131, 21051, 21193, 21119, 21109, 21189, 21025, 21071, 21115,
+    just_train_these_fips = [36061, 6037,
+       21131, 21051, 21193, 21119, 21109, 21189, 21025, 21071, 21115,
        21197, 21175, 21165, 21049, 21173, 21127, 21011, 21205, 21043,
        21181, 21069, 21019, 39087, 21089, 21135, 21161, 21023, 39145,
        39001, 39015, 39079, 39131, 39025, 39071, 39141, 39027, 39047,
-       39129, 39057, 39113, 39045, 39097, 39023, 39109] # GOOD 6037,17031, TROUBLE 53061,36059,53033  NOT SURE 36087
+       39129, 39057, 39113, 39045, 39097, 39023, 39109]
+       #35006, 35043, 35031]
+        # GOOD 6037,17031, TROUBLE 53061,36059,53033  NOT SURE 36087
     #[36061, 36059, 26163, 17031, 36103, 36119, 34013, 34003, 6037,  9001,  34017, 26125, 25017, 34039, 26099, 9003] 
 
 
@@ -97,7 +100,7 @@ if __name__ == '__main__':
     #-- When not multiprocessing, enable bokeh plotting (since won't cause issue)
     # Flag to stating whether to plot. This only matters when not multiprocessing (isMultiProc=False)
         # When isMultiProc=True, bokeh will cause errors so we ignore this flag
-    isPlotBokeh     = True
+    isPlotBokeh     = False
 
 
     #-- Set verbosity for printing
@@ -118,22 +121,39 @@ if __name__ == '__main__':
 # -%% Setup Formatter run
 
     #-- Flag to choose whether to format a model's .mat output file
-    isFormat = False
+    isFormat = True
 
     #-- Define control parameters
     # Flag to distribue state deaths amongst counties
-    isAllocCounties = True
+    isAllocCounties = False
     # Allocating using the mean number of num_alloc_days days BEFORE alloc_day
     num_alloc_days=5
     alloc_day=train_til
     # Flag to translate cummulative data to daily counts
     isComputeDaily = True
 
+    # Flag to distribute deaths with neural net
+    isAllocNN=True
+    # Number of days of death inputs
+    numDeaths=2
+    # Number of days of cases inputs
+    numCases=2
+    # Number of days of mobility inputs
+    numMobility=2
+    # Number of days of deaths outputs to average over
+    lenOutput=5
+    # Flag to remove data points with zero deaths for inputs and output
+    remove_sparse=True
+    # Flag to retrain neural net or just look for model in directory
+    retrain=True
+    # Directory to save or load model from
+    modelDir=r'Josh\Alloc_NN\ModelSaves\FirstNet'
+
 
 
     #-- When a model was not trained, provide filename to format
         # if a model was trained, that filename will automatically be used
-    format_flnm_in = 'Alex/PracticeOutputs/conv.npy'
+    format_flnm_in = 'clusteringCopy.mat'
 
     #-- Provide filename for output file 
     format_flnm_out = os.path.splitext(format_flnm_in)[0] + '.csv'
@@ -143,19 +163,19 @@ if __name__ == '__main__':
 # -%% Setup evaluator run
 
     #-- Flag to choose whether to evaluate a .csv file
-    isEval = False
-
+    isEval = True
     #-- When model was not formatted, provide a filename to evaluate
         # if a model was formatted, that filename will automatically be used
-    eval_flnm_in = 'Alex/PracticeOutputs/Debugging.csv'
+    eval_flnm_in = 'clusteringCopy.csv'
 
     #-- Day from which we should evaluate 
         # in format 'YYYY-MM-DD'
-    eval_start_day = '2020-05-11'
+    eval_start_day = '2020-05-10'
 
     #-- Day until which we should evaluate
         # in format 'YYYY-MM-DD'
         # Set to None to evaluate until most recent day of data
+    # eval_end_day = '2020-05-05'
     eval_end_day = None
 
 
@@ -236,12 +256,20 @@ if __name__ == '__main__':
             if not isRunInitConHyper:
                 print('*** Input filename:\n    %s'%format_flnm_in)
 
-            format_file_for_evaluation(format_flnm_in,
+            format_file_for_evaluation( format_flnm_in,
                                         format_flnm_out,
                                         isAllocCounties = isAllocCounties,
                                         isComputeDaily = isComputeDaily,
                                         alloc_day=alloc_day,
-                                        num_alloc_days=num_alloc_days)
+                                        num_alloc_days=num_alloc_days,
+                                        isAllocNN=isAllocNN,
+                                        retrain=retrain,
+                                        numDeaths=numDeaths,
+                                        numCases=numCases,
+                                        numMobility=numMobility,
+                                        lenOutput=lenOutput,
+                                        remove_sparse=remove_sparse,
+                                        modelDir=modelDir)
 
 
             if not isRunInitConHyper:
@@ -294,6 +322,7 @@ if __name__ == '__main__':
         plot_convergence(res)
     else:
         # Perform a regular run of the code
+        # runFull(init_vec)
         runFull(init_vec)
 
 

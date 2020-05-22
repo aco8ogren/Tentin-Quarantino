@@ -27,7 +27,7 @@ import cube_formatter as cf
 plotN = 20
 # Cluster fips to plot
     # If isShowAllocations=True, all counties from the following cluster will be plotted
-clst2Show = 15              # "FIPS" of cluster to show
+clst2Show = 80              # "FIPS" of cluster to show
 # Data Manipulation flags (should match those used in creating submission file)
 isComputeDaily = False           # Flag to translate cummulative data to daily counts
 #- Plot-type control flags
@@ -203,6 +203,9 @@ if isShowClusters:
         if boundary is not None:
             bd_day = (pd.to_datetime(boundary)-global_dayzero)/np.timedelta64(1, 'D')
             ax.axvline(x=bd_day, color='black')
+
+        ax.set_ylim(-10,345)
+        ax.set_xlim(63,110)
 
         # Save output figures if desired
         if is_saveSVG:
