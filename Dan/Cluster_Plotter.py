@@ -27,14 +27,14 @@ import cube_formatter as cf
 plotN = 20
 # Cluster fips to plot
     # If isShowAllocations=True, all counties from the following cluster will be plotted
-clst2Show = 25              # "FIPS" of cluster to show
+clst2Show = 80              # "FIPS" of cluster to show
 # Data Manipulation flags (should match those used in creating submission file)
 isComputeDaily = False           # Flag to translate cummulative data to daily counts
 #- Plot-type control flags
 isCumul     = True          # Flag to denote that the plot should be cumulative, not daily deaths
 # NOTE: the following two flags are independent of each other (ie. you can run either, or, or both)
 isShowClusters = True       # Flag to denote that each cluster should be plotted on its own
-isShowAllocations = False    # Flag to denote that the counties within clst2Show should be shown
+isShowAllocations = True    # Flag to denote that the counties within clst2Show should be shown
 # Key days (should match those used in creating the cube)
 global_dayzero = pd.to_datetime('2020 Jan 21')
 # Day until which model was trained (train_til in epid model)

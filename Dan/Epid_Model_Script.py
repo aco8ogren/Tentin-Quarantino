@@ -37,7 +37,7 @@ if __name__ == '__main__':
 
     #-- Multiprocessing settings
     # Flag to choose whether multiprocessing should be used
-    isMultiProc = False
+    isMultiProc = True
     # Number of cores to use (logical cores, not physical cores)
     workers = 20
 
@@ -75,11 +75,14 @@ if __name__ == '__main__':
     isSubSelect = False
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
-    just_train_these_fips = [21131, 21051, 21193, 21119, 21109, 21189, 21025, 21071, 21115,
+    just_train_these_fips = [36061, 6037,
+       21131, 21051, 21193, 21119, 21109, 21189, 21025, 21071, 21115,
        21197, 21175, 21165, 21049, 21173, 21127, 21011, 21205, 21043,
        21181, 21069, 21019, 39087, 21089, 21135, 21161, 21023, 39145,
        39001, 39015, 39079, 39131, 39025, 39071, 39141, 39027, 39047,
-       39129, 39057, 39113, 39045, 39097, 39023, 39109] # GOOD 6037,17031, TROUBLE 53061,36059,53033  NOT SURE 36087
+       39129, 39057, 39113, 39045, 39097, 39023, 39109]
+       #35006, 35043, 35031]
+        # GOOD 6037,17031, TROUBLE 53061,36059,53033  NOT SURE 36087
     #[36061, 36059, 26163, 17031, 36103, 36119, 34013, 34003, 6037,  9001,  34017, 26125, 25017, 34039, 26099, 9003] 
 
 
@@ -96,7 +99,7 @@ if __name__ == '__main__':
     #-- When not multiprocessing, enable bokeh plotting (since won't cause issue)
     # Flag to stating whether to plot. This only matters when not multiprocessing (isMultiProc=False)
         # When isMultiProc=True, bokeh will cause errors so we ignore this flag
-    isPlotBokeh     = True
+    isPlotBokeh     = False
 
 
     #-- Set verbosity for printing

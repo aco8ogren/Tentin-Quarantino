@@ -390,8 +390,8 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
                                 args=(data,mobility_data, HYPERPARAMS), 
                                 bounds=np.transpose(np.array(const['ranges'])),
                                 jac = '2-point',
-                                verbose = 2)
-            #plot_with_errors_sample_z(res, const['params'], initial_conditions, main_df, mobility_df, state, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True);
+                                verbose = 0)
+            # plot_with_errors_sample_z(res, const['params'], initial_conditions, main_df, mobility_df, state, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True);
             all_s, _, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['train_Dfrom'], const, HYPERPARAMS, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
             toc = time.time()
             cube[0,:,ind] = fips
@@ -564,10 +564,11 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     # df['date_processed'] = (df['date_processed'] - day_zero) / np.timedelta64(1, 'D')
     df['date_processed'] = (df['date_processed'] - global_dayzero) / np.timedelta64(1, 'D')
 
+    train_til_for_erf = train_til
         #-- Set day until which to train
     if train_til is not None:
-        # User provided a boundary date for training; translate to absolute time w.r.t global_dayzero
         train_til_for_erf = train_til.replace(' ','-')
+        # User provided a boundary date for training; translate to absolute time w.r.t global_dayzero
         train_til = pd.to_datetime(train_til)
         if verbosity >= 2:
             print('---- Only training until: ', train_til)
@@ -595,11 +596,14 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     #         #p.legend.location = 'top_left'
     #         bokeh.io.show(p)
 
+    #-- Define clusterDate as train_til for clustering section
+        # Do outside of if-statement so that it stays "None"-type for JMC
+    clusterDate=train_til
+
 
     # -%%
     #-- Remove days beyond our training limit day
     if train_til is not None:
-        clusterDate=train_til
         train_til = int((train_til-global_dayzero)/np.timedelta64(1,'D'))
         df = df[df['date_processed'] <= train_til]
 
