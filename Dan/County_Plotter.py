@@ -11,6 +11,7 @@ import bokeh.plotting as bkp
 from bokeh.models import Span
 import holoviews as hv
 from pathlib import Path
+# from bokeh.io import export_png
 
 #-- Setup paths
 # Get parent directory using git
@@ -31,15 +32,17 @@ hv.extension('bokeh')
 
 #-- Control parameters
 # Top N counties to plot with the most deaths
+    # Set to -1 to plot all
 plotN = 20
+shift = 20
 # Data Manipulation flags (should match those used in creating submission file)
 isAllocCounties = True          # Flag to distribue state deaths amongst counties
-isComputeDaily = True           # Flag to translate cummulative data to daily counts
+isComputeDaily = False           # Flag to translate cummulative data to daily counts
 #- Plot-type control flags
 isStateWide = False          # Flag to plot state-wise data (will use nyt_states file for true_df)
                             #   The raw cube won't be affected so make sure it is also state-wise data
                             #   AND cumulative since there is only cumulative nyt_us_states data
-isCumul     = False          # Flag to denote that the plot should be cumulative, not daily deaths
+isCumul     = True          # Flag to denote that the plot should be cumulative, not daily deaths
                             # ** Only affects county-level data since state-wide is implicitly cumulative
                             #   This sets which county-wide nyt file is used and sets the plot y-axis label
 # Key days (should match those used in creating the cube)
@@ -61,12 +64,14 @@ svg_flm = 'Dan/MidtermFigs/CountyWideDaily2/'
 #-- Files to utilize
 # Filename for cube of model data
     # should be (row=sample, col=day, pane=state) with state FIPS as beef in row1
-mat_model   = 'clustering.mat'#'Dan\\train_til_today.csv'
+mat_model   = 'Alex\\PracticeOutputs\\fresh.mat'#'Dan\\train_til_today.csv'
 # Reference file to treat as "true" death counts 
 csv_true    = 'data\\us\\covid\\nyt_us_counties_daily.csv'  # daily county counts (also used for allocating deaths when req.)
 csv_ST_true = 'data\\us\\covid\\nyt_us_states.csv'          # this is cumulative ONLY; no _daily version exists
 csv_CT_cumul_true = 'data\\us\\covid\\nyt_us_counties.csv'  # county cumulative counts
 # reference file for clustering df
+    # This assignment as done below assumes that the right file just has _clusters.csv appended.
+    # You can enter the actual path manually if you'd like
 cluster_ref_fln=os.path.splitext(mat_model)[0] + '_clusters.csv'
 
 
@@ -124,7 +129,7 @@ peak_daily_deaths = np.max(model_quants[4,:,:],0)
     # NOTE: argsort only works in ascdending order so use [::-1] to reverse
 peak_inds = np.argsort(peak_daily_deaths)[::-1]
 # Take the largest plotN counties (since these are the only ones requested by the user)
-peak_inds = peak_inds[:plotN]
+peak_inds = peak_inds[shift:plotN+shift]
 # Extract the resulting counties
     # results will be implicitly sorted due to use of argsort
 model_quants = model_quants[:,:,peak_inds]      # Get quantiles
@@ -136,6 +141,21 @@ model_fips   = model_cube[0,0,peak_inds]        # Get fips ID's
 true_df = true_df[true_df.fips.isin(model_fips)]
 # Add column of dates in datetime format
 true_df['dateDT'] = pd.to_datetime(true_df['date'].values)
+
+if isAllocCounties:
+    #-- Read in cluster-to-fips translation (used for showing which counties were clustered)
+    # Load cluster data
+    fips_to_clst = pd.read_csv(cluster_ref_fln)
+    # Extract useful columns
+    fips_to_clst = fips_to_clst[['fips', 'cluster']]
+    # Cast fips and cluster values to int
+    fips_to_clst['fips'] = fips_to_clst['fips'].astype('int')
+    fips_to_clst['cluster'] = fips_to_clst['cluster'].astype('int')
+    # Cast to pandas series
+    fips_to_clst = pd.Series(fips_to_clst.set_index('fips')['cluster'])
+else:
+    # Define empty list so that "in" check later doesn't cause errors
+    fips_to_clst = []
 
 #-- Create directory for output .svg files if necessary
 if is_saveSVG:
@@ -165,6 +185,10 @@ for ind, cnty in enumerate(model_fips):
     else:
         # Include county in title
         ptit = 'SEIIRD+Q Model: %s, %s (%d)'%(cnty_true_df['county'].iloc[0],cnty_true_df['state'].iloc[0], cnty)
+
+    if cnty in fips_to_clst:
+        # Add cluster ID when the county was clustered
+        ptit += ' [Cluster %d]'%fips_to_clst[cnty]
 
     # Format y-axis label for cumulative vs. daily plots
     if isCumul or isStateWide:
@@ -201,6 +225,9 @@ for ind, cnty in enumerate(model_fips):
 
     # Show plot
     bokeh.io.show(p)
+    # fn = "Alex/conv/" + ptit.replace('SEIIRD+Q Model:','')
+    # export_png(p,filename=fn)
+
 
     # Save output figures if desired
     if is_saveSVG:

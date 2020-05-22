@@ -1,6 +1,4 @@
-# %% Imports and path setup
 
-# NOTE: Apparently we still need to shield. Can't say I understand why...
 if __name__ == '__main__':
     import os
     import sys
@@ -10,6 +8,10 @@ if __name__ == '__main__':
     DIR=wd[:wd.find(HomeDIR)+len(HomeDIR)]
     os.chdir(DIR)
 
+    # -%% Imports and path setup
+
+# NOTE: Apparently we still need to shield. Can't say I understand why...
+
     sys.path.append(os.getcwd())
 
     from Dan.EpidModel_parallelized_Counties import SEIIRQD_model
@@ -17,7 +19,7 @@ if __name__ == '__main__':
     from Dan.format_sub import format_file_for_evaluation
 
 
-# %% Setup model training run
+# -%% Setup model training run
 
     #-- Flag to choose whether to train the model
         # If this is true, the output file from this run will be used for
@@ -29,7 +31,7 @@ if __name__ == '__main__':
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
-    sv_flnm_mat = 'Dan\\PracticeOutputs\\Debugging.mat'
+    sv_flnm_mat = 'Alex\\PracticeOutputs\\detective_work.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
@@ -37,7 +39,7 @@ if __name__ == '__main__':
     # Flag to choose whether multiprocessing should be used
     isMultiProc = False
     # Number of cores to use (logical cores, not physical cores)
-    workers = 3
+    workers = 20
 
 
     #-- Filtering parameters
@@ -65,13 +67,19 @@ if __name__ == '__main__':
         # When False, the code will run as it used to
     isCluster = True
 
+    cluster_max_radius = 2
+
 
     #-- Sub-select counties to train on
     # Flag to choose whether to sub-select
     isSubSelect = False
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
-    just_train_these_fips = [6059, 6085, 6075, 55025, 48029, 31055]
+    just_train_these_fips = [21131, 21051, 21193, 21119, 21109, 21189, 21025, 21071, 21115,
+       21197, 21175, 21165, 21049, 21173, 21127, 21011, 21205, 21043,
+       21181, 21069, 21019, 39087, 21089, 21135, 21161, 21023, 39145,
+       39001, 39015, 39079, 39131, 39025, 39071, 39141, 39027, 39047,
+       39129, 39057, 39113, 39045, 39097, 39023, 39109] # GOOD 6037,17031, TROUBLE 53061,36059,53033  NOT SURE 36087
     #[36061, 36059, 26163, 17031, 36103, 36119, 34013, 34003, 6037,  9001,  34017, 26125, 25017, 34039, 26099, 9003] 
 
 
@@ -88,7 +96,7 @@ if __name__ == '__main__':
     #-- When not multiprocessing, enable bokeh plotting (since won't cause issue)
     # Flag to stating whether to plot. This only matters when not multiprocessing (isMultiProc=False)
         # When isMultiProc=True, bokeh will cause errors so we ignore this flag
-    isPlotBokeh     = False
+    isPlotBokeh     = True
 
 
     #-- Set verbosity for printing
@@ -106,10 +114,10 @@ if __name__ == '__main__':
     death_weight = 5   # The weight with which we multiply the death error in SEIIRQD optimization. The death data is trusted death_weight times more than the symptomatic infected data.
     alpha = 0.00341564933361549         # alpha of the LeakyReLU for modifying the symptomatic infected error. i.e. if alpha = 0 ==> no penalty for overestimating Sympt Inf. alpha = 1 ==> as much penalty for overestimating as underestimating.
 
-# %% Setup Formatter run
+# -%% Setup Formatter run
 
     #-- Flag to choose whether to format a model's .mat output file
-    isFormat = True
+    isFormat = False
 
     #-- Define control parameters
     # Flag to distribue state deaths amongst counties
@@ -148,7 +156,7 @@ if __name__ == '__main__':
 
 
 
-# %% Setup evaluator run
+# -%% Setup evaluator run
 
     #-- Flag to choose whether to evaluate a .csv file
     isEval = True
@@ -167,7 +175,7 @@ if __name__ == '__main__':
     eval_end_day = None
 
 
-# %% (OPTIONAL) Define parameters for init conditional optimization
+# -%% (OPTIONAL) Define parameters for init conditional optimization
 
     # @Alex, @Josh: YOU CAN PROBABLY IGNORE THIS SECTION
     # In general, IGNORE this unles you want to repeat the optimizations that Dan is doing
@@ -191,7 +199,7 @@ if __name__ == '__main__':
     random_state = 1234
     HypParamVerbose = True
 
-# %% Prepare for calls
+# -%% Prepare for calls
 
     #-- If the user says to train a model but doesn't save the result, we can't
         # run the remaining sections since we won't have the results to format/eval
@@ -211,7 +219,7 @@ if __name__ == '__main__':
         eval_flnm_in = format_flnm_out
 
 
-# %% Define function that actually runs the code
+# -%% Define function that actually runs the code
 # Needed as a function for the optional hyperparameter optimization 
 
     def runFull(init_vec):
@@ -232,7 +240,7 @@ if __name__ == '__main__':
                             isConstInitCond = isConstInitCond,
                             init_vec = init_vec,
                             verbosity = verbosity,
-                            isCluster = isCluster)
+                            isCluster = isCluster, cluster_max_radius = cluster_max_radius)
             if isSaveRes and not isRunInitConHyper:
                 print('*** Model results saved to:\n    %s\n    %s'%(sv_flnm_mat, sv_flnm_np))
                 
@@ -278,7 +286,7 @@ if __name__ == '__main__':
 
         
 
-# %% Run 
+# -%% Run 
 
     if isRunInitConHyper:
             
