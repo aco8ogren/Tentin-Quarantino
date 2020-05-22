@@ -125,7 +125,7 @@ def tau(t):
 
 def seiirq(dat, t, params, N, max_t, offset,mobility_data):
     if t >= max_t:
-        return [0]*8
+        return [0]*6
     beta = params[0]
     alpha = params[1] # rate from e to ia
     sigma = params[2] # rate of asymptomatic people becoming symptotic
@@ -194,6 +194,7 @@ def model_z(params, data,mobility_data, tmax=-1):
     try:
         s = scipy.integrate.odeint(seiirq, yz_0, np.arange(0, n), args=args)
     except RuntimeError:
+        s = scipy.integrate.odeint(seiirq, yz_0, np.arange(0, n), args=args)
 #         print('RuntimeError', params)
         return np.zeros((n, len(yz_0)))
 
@@ -258,11 +259,17 @@ def plot_with_errors_sample_z(res, df, mobility_df, region, d_thres, const, HYPE
     D = s[:,5]
 
     #-- Perform bokeh stuff when not multiprocessing (so that plots are actually shown)
-    if (not const['isMultiProc']) and const['isPlotBokeh']:
-        t = np.arange(0, len(data))
-        tp = np.arange(0, int(np.round(len(data)*extrapolate)))
+    
+    t = np.arange(0, len(data))
+    tp = np.arange(0, int(np.round(len(data)*extrapolate)))
 
-        ptit = '%s, %s - (%d) - SEIIRD+Q Model'%(const['fips_to_county'][region], const['fips_to_state'][region], region)
+    ptit = '%s, %s - (%d) - SEIIRD+Q Model'%(const['fips_to_county'][region], const['fips_to_state'][region], region)
+    plt.plot(tp,D,color='black')
+    plt.scatter(t,data['deaths'],color = 'black')
+    plt.title(ptit)
+    plt.savefig(ptit + ".pdf")
+    plt.close()
+    if (not const['isMultiProc']) and const['isPlotBokeh']:
         p = bkp.figure(plot_width=600,
                                 plot_height=400,
                                 title = ptit,
@@ -390,7 +397,7 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
                                 args=(data,mobility_data, HYPERPARAMS), 
                                 bounds=np.transpose(np.array(const['ranges'])),
                                 jac = '2-point',
-                                verbose = 0)
+                                verbose = 2)
             # plot_with_errors_sample_z(res, const['params'], initial_conditions, main_df, mobility_df, state, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True);
             all_s, _, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['train_Dfrom'], const, HYPERPARAMS, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
             toc = time.time()

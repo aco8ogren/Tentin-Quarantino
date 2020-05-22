@@ -202,6 +202,9 @@ if isShowClusters:
             bd_day = (pd.to_datetime(boundary)-global_dayzero)/np.timedelta64(1, 'D')
             ax.axvline(x=bd_day, color='black')
 
+        ax.set_ylim(-10,345)
+        ax.set_xlim(63,110)
+
         # Save output figures if desired
         if is_saveSVG:
             p.output_backend = "svg"
