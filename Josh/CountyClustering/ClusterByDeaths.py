@@ -12,7 +12,7 @@ def JoshMeansClustering(fipsList,date,d_thres=50,cluster_radius=1e6,Fpath=None):
     covidDF=pd.read_csv('data/us/covid/nyt_us_counties.csv')
     covidDF['date']=pd.to_datetime(covidDF['date'])
     if date is not None:
-        date=pd.to_datetime(date)-np.timedelta64(1,'D')
+        date=pd.to_datetime(date)#-np.timedelta64(1,'D')
     else:
         date=covidDF.date.max()
     
