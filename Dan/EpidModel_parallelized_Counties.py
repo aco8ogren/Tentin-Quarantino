@@ -264,11 +264,16 @@ def plot_with_errors_sample_z(res, df, mobility_df, region, d_thres, const, HYPE
     tp = np.arange(0, int(np.round(len(data)*extrapolate)))
 
     ptit = '%s, %s - (%d) - SEIIRD+Q Model'%(const['fips_to_county'][region], const['fips_to_state'][region], region)
-    plt.plot(tp,D,color='black')
-    plt.scatter(t,data['deaths'],color = 'black')
-    plt.title(ptit)
-    plt.savefig(ptit + ".pdf")
-    plt.close()
+    
+    if True:
+        plt.plot(tp,D,color='black')
+        dmed = np.percentile(all_s, 50, axis=0)
+        plt.plot(tp, dmed[:,5], color='red')
+        plt.scatter(t,data['deaths'],color = 'black')
+        plt.title(ptit)
+        plt.savefig(ptit + ".pdf")
+        plt.close()
+
     if (not const['isMultiProc']) and const['isPlotBokeh']:
         p = bkp.figure(plot_width=600,
                                 plot_height=400,
