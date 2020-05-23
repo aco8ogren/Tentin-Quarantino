@@ -24,14 +24,14 @@ if __name__ == '__main__':
     #-- Flag to choose whether to train the model
         # If this is true, the output file from this run will be used for
         # the remainder of the sections
-    isTrainModel = False
+    isTrainModel = True
     #-- Define control parameters
     # Flag to choose whether to save the results or not
-    isSaveRes = False
+    isSaveRes = True
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
-    sv_flnm_mat = 'Alex\\PracticeOutputs\\detective_work.mat'
+    sv_flnm_mat = 'Alex\\PracticeOutputs\\can_we_save_time.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
@@ -124,7 +124,7 @@ if __name__ == '__main__':
 
     #-- Define control parameters
     # Flag to distribue state deaths amongst counties
-    isAllocCounties = False
+    isAllocCounties = True
     # Allocating using the mean number of num_alloc_days days BEFORE alloc_day
     num_alloc_days=5
     alloc_day=train_til
@@ -132,7 +132,7 @@ if __name__ == '__main__':
     isComputeDaily = True
 
     # Flag to distribute deaths with neural net
-    isAllocNN=True
+    isAllocNN = False
     # Number of days of death inputs
     numDeaths=2
     # Number of days of cases inputs
@@ -146,13 +146,13 @@ if __name__ == '__main__':
     # Flag to retrain neural net or just look for model in directory
     retrain=True
     # Directory to save or load model from
-    modelDir=r'Josh\Alloc_NN\ModelSaves\FirstNet'
+    modelDir='Josh\\Alloc_NN\\ModelSaves\\FirstNet'
 
 
 
     #-- When a model was not trained, provide filename to format
         # if a model was trained, that filename will automatically be used
-    format_flnm_in = 'clusteringCopy.mat'
+    format_flnm_in = 'Alex\\PracticeOutputs\\OutputsToSend\\detective_work.npy'
 
     #-- Provide filename for output file 
     format_flnm_out = os.path.splitext(format_flnm_in)[0] + '.csv'
@@ -169,7 +169,7 @@ if __name__ == '__main__':
 
     #-- Day from which we should evaluate 
         # in format 'YYYY-MM-DD'
-    eval_start_day = '2020-05-10'
+    eval_start_day = '2020-05-11'
 
     #-- Day until which we should evaluate
         # in format 'YYYY-MM-DD'
