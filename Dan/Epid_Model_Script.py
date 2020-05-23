@@ -2,6 +2,7 @@
 if __name__ == '__main__':
     import os
     import sys
+    from datetime import datetime as dt
 
     HomeDIR='Tentin-Quarantino'
     wd=os.path.dirname(os.path.realpath(__file__))
@@ -101,7 +102,7 @@ if __name__ == '__main__':
     # Flag to stating whether to plot. This only matters when not multiprocessing (isMultiProc=False)
         # When isMultiProc=True, bokeh will cause errors so we ignore this flag
     # ********************************************************
-    # NOTE: *** This feature is now deprecated. Plotting is done with matplotlib now ***
+    # NOTE: *** This feature is now DEPRACATED. Plotting is done with matplotlib now ***
     # ********************************************************
     # isPlotBokeh     = False
 
@@ -246,6 +247,9 @@ if __name__ == '__main__':
     if isAllocCounties and isAllocNN:
         raise ValueError("Only a single allocation method should be chosen (isAllocCounties or isAllocNN)")
 
+    # Get date and time to create unique folder
+    save_time = dt.now().strftime("m%m_d%d_h%Hm%Ms%S/")
+
 # %% Define function that actually runs the code
 # Needed as a function for the optional hyperparameter optimization 
 
@@ -264,6 +268,7 @@ if __name__ == '__main__':
                             isSubSelect = isSubSelect,
                             just_train_these_fips = just_train_these_fips,
                             isSaveMatplot = isSaveMatplot, 
+                            save_time = save_time, 
                             isConstInitCond = isConstInitCond,
                             init_vec = init_vec,
                             verbosity = verbosity,

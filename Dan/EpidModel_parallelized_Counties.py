@@ -32,8 +32,6 @@ from sklearn.metrics import mean_squared_error
 import os
 
 from pathlib import Path
-from datetime import datetime as dt
-
 
 # %%
 #  Great! Let's also make a helper function to select data from a fips, starting when the pandemic hit to be able to fit models. #  
@@ -47,53 +45,6 @@ def select_region(df, region, min_deaths=50,mobility = False):
         d = d[d['deaths'] >= min_deaths]
     return d
 
-
-# %%
-#  Define a funciton for calculating the "errors" from the least_squares model.
-#  
-#  The "errors" here actually seem to be the std of the parameters from our model. 
-#    This std is calculated from the jacobian returned by the least_squares function.
-#    It is currently unclear how the TA's obtained this conversion (res.jac --> std(params))
-
-# return params, 1 standard deviation errors
-# def get_errors(res, p0):
-#     p0 = np.array(p0)
-#     ysize = len(res.fun)
-#     cost = 2 * res.cost  # res.cost is half sum of squares!
-#     popt = res.x
-#     # Do Moore-Penrose inverse discarding zero singular values.
-#     _, s, VT = svd(res.jac, full_matrices=False)
-#     threshold = np.finfo(float).eps * max(res.jac.shape) * s[0]
-#     s = s[s > threshold]
-#     VT = VT[:s.size]
-#     pcov = np.dot(VT.T / s**2, VT)
-
-#     warn_cov = False
-#     absolute_sigma = False
-#     if pcov is None:
-#         # indeterminate covariance
-#         pcov = zeros((len(popt), len(popt)), dtype=float)
-#         pcov.fill(inf)
-#         warn_cov = True
-#     elif not absolute_sigma:
-#         if ysize > p0.size:
-#             s_sq = cost / (ysize - p0.size)
-#             pcov = pcov * s_sq
-#         else:
-#             pcov.fill(inf)
-#             warn_cov = True
-
-#     if warn_cov:
-#         print('cannot estimate variance')
-#         return None
-    
-#     perr = np.sqrt(np.diag(pcov))
-#     return perr
-
-# %% [markdown]
-## MODEL 3 of 3: $\mathbf{SEI_A I_S R}$ with empirical quarantine
-# For quarantine analysis, we find an effective population size based on what fraction of the population is moving according to https://citymapper.com/cmi/milan. (Since Milan is the capital of Lombardy, we perform the analysis for that region.) To make the quarantine more realistic, we model a "leaky" quarantine, where the susceptible population is given by the mobility from above plus some offset. To treat asymptomatic cases, we introduce states $I_A$ (asymptomatic) and $I_S$ (symptomatic) according to the following sketch and differential equations:
-#  ![SEIIR + quarantine](images/overview.png)
 
 # %%
 def q(t, N, shift,mobility_data,offset):
@@ -304,10 +255,8 @@ def plot_with_errors_sample_z(res, df, mobility_df, region, d_thres, const, HYPE
         
 
         #-- Save the Plot
-        # Get date and time to create unique folder
-        tim = dt.now().strftime("m%m_d%d_h%Hm%Ms%S/")
         # Create filename (with full path)
-        tmp_flm = "OutputPlots/" + tim + ptit + ".pdf"
+        tmp_flm = "OutputPlots/" + const['save_time'] + ptit + ".pdf"
         # Create directory based on time (if it doesn't exist)
         Path(tmp_flm).parent.mkdir(parents=True, exist_ok=True)
         # Save figure
@@ -498,7 +447,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
                     isMultiProc = False,workers = 1,
                     train_til = '2020 04 24',train_Dfrom = 7,min_train_days = 5,
                     isSubSelect = True,just_train_these_fips = [36061],
-                    isPlotBokeh = False, isSaveMatplot = False, 
+                    isPlotBokeh = False, isSaveMatplot = False, save_time = None, 
                     isConstInitCond = True, init_vec=(2, 0.85, 3),
                     verbosity = 3, least_squares_verbosity = 0,
                     isCluster=False, cluster_max_radius = 2):
@@ -932,6 +881,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     const['isMultiProc'] = isMultiProc
     const['isPlotBokeh'] = isPlotBokeh
     const['isSaveMatplot'] = isSaveMatplot
+    const['save_time'] = save_time
     const['isConstInitCond'] = isConstInitCond
     const['verbosity'] = verbosity
     const['least_squares_verbosity'] = least_squares_verbosity
