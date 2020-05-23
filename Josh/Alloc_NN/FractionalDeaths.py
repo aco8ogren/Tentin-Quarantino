@@ -20,7 +20,7 @@ os.chdir(cwd)
 
 
 
-def Training(alloc_day,clust_fln,numDeaths=5,numCases=5,numMobility=5,lenOutput=5,remove_sparse=True,modelDir=None):
+def Training(alloc_day,clust_fln,numDeaths=5,numCases=5,numMobility=5,lenOutput=5,remove_sparse=True,Patience=4, DropoutRate=.1,modelDir=None):
 #%% Data formatting
 
     lenInput=np.max([numDeaths,numCases,numMobility])
@@ -68,10 +68,13 @@ def Training(alloc_day,clust_fln,numDeaths=5,numCases=5,numMobility=5,lenOutput=
             if len(DF)>=totLen:
                 for i in range(len(DF)-totLen+1):
                     # print(i)
-                    input=[ DF.iloc[i:i+numDeaths].deathsFrac.values, 
-                            DF.iloc[i+numDeaths-numCases:i+numDeaths].casesFrac.values, 
-                            DF.iloc[i+numDeaths-numMobility:i+numDeaths].m50_index.values] 
-                    Inputs.append([element for subList in input for element in subList])
+                    Input=[ DF.iloc[i+lenInput-numDeaths:i+lenInput].deathsFrac.values, 
+                            DF.iloc[i+lenInput-numCases:i+lenInput].casesFrac.values, 
+                            DF.iloc[i+lenInput-numMobility:i+lenInput].m50_index.values] 
+                    Input=[element for subList in Input for element in subList]
+                    if len(Input)!=numDeaths+numCases+numMobility:
+                        raise ValueError('Input lengths are wrong')
+                    Inputs.append(Input)
                     countyDeaths=DF.iloc[i+numDeaths:i+totLen].deaths.sum()
                     clusterDeaths=DF.iloc[i+numDeaths:i+totLen].clusterDeaths.sum()
                     if clusterDeaths==0:
@@ -90,10 +93,11 @@ def Training(alloc_day,clust_fln,numDeaths=5,numCases=5,numMobility=5,lenOutput=
 
 
     #%%
-    import keras
-    from keras.layers import Dense
-    from keras.layers import Dropout
-    from keras.callbacks import ModelCheckpoint
+    import tensorflow as tf
+    from tensorflow import keras
+    from tensorflow.keras.layers import Dense
+    from tensorflow.keras.layers import Dropout
+    from tensorflow.keras.callbacks import ModelCheckpoint
     # from keras.utils import np_utils
     from datetime import datetime
     if modelDir is None:
@@ -118,9 +122,9 @@ def Training(alloc_day,clust_fln,numDeaths=5,numCases=5,numMobility=5,lenOutput=
     #%%
     model=keras.models.Sequential()
     model.add(Dense(X.shape[1],input_dim=X.shape[1],activation='sigmoid'))
-    model.add(Dropout(0.1))
+    model.add(Dropout(DropoutRate))
     model.add(Dense(int(np.floor(X.shape[1]/2)),activation='sigmoid'))
-    model.add(Dropout(0.1))
+    model.add(Dropout(DropoutRate))
     model.add(Dense(1))
     model.compile(loss='mean_squared_error', optimizer='adam')
     #%%
@@ -128,7 +132,7 @@ def Training(alloc_day,clust_fln,numDeaths=5,numCases=5,numMobility=5,lenOutput=
     # filepath=os.path.join(checkpointDir,"model-{epoch:02d}-{loss:.4f}.hdf5")
     # checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
     # callbacks_list = [checkpoint,keras,keras.callbacks.EarlyStopping(monitor='val_loss',mode='min',patience=4)]
-    callbacks_list = [keras.callbacks.EarlyStopping(monitor='val_loss',mode='min',patience=4)]
+    callbacks_list = [keras.callbacks.EarlyStopping(monitor='val_loss',mode='min',patience=Patience)]
     model.fit(X, Y, epochs=200, batch_size=32, callbacks=callbacks_list,validation_split=0.1)
 
 

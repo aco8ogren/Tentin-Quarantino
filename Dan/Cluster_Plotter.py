@@ -17,9 +17,8 @@ sys.path.append('Dan')
 # Import our custom cube managing functions
 import cube_formatter as cf
 
-
 #-- Setup interactive matplotlib
-#%matplotlib widget
+%matplotlib widget
 
 #-- Control parameters
 # Top N clusters to plot with the most deaths

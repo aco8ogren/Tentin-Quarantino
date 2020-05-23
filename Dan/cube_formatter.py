@@ -347,7 +347,7 @@ def alloc_fromCluster(data, cluster_ref_fln,alloc_day=None,num_alloc_days=5):
     return data
 
 
-def alloc_NN(data,retrain=True,alloc_day=None,cluster_ref_fln=None,numDeaths=5,numCases=5,numMobility=5,lenOutput=5,remove_sparse=True,modelDir=None):
+def alloc_NN(data,retrain=True,alloc_day=None,cluster_ref_fln=None,numDeaths=5,numCases=5,numMobility=5,lenOutput=5,remove_sparse=True,Patience=4, DropoutRate=.1, modelDir=None):
 
 
     """
@@ -408,7 +408,7 @@ def alloc_NN(data,retrain=True,alloc_day=None,cluster_ref_fln=None,numDeaths=5,n
     #           Dimensionality is: [sample, day, county]
     """
     from Josh.Alloc_NN.FractionalDeaths import Training
-    import keras
+    from tensorflow import keras
     ref_data = pd.read_csv(r'data\us\covid\nyt_us_counties_daily.csv')
     ref_data=ref_data[['fips','date','deaths']]
     ref_data.loc[:,'date']=pd.to_datetime(ref_data.date)
@@ -432,7 +432,7 @@ def alloc_NN(data,retrain=True,alloc_day=None,cluster_ref_fln=None,numDeaths=5,n
 
     # Train model if retrain=True
     if retrain:
-        modelDir=Training(alloc_day=alloc_day,clust_fln=cluster_ref_fln,numDeaths=numDeaths,numCases=numCases,numMobility=numMobility,lenOutput=lenOutput,remove_sparse=remove_sparse,modelDir=modelDir)
+        modelDir=Training(alloc_day=alloc_day,clust_fln=cluster_ref_fln,numDeaths=numDeaths,numCases=numCases,numMobility=numMobility,lenOutput=lenOutput,remove_sparse=remove_sparse,Patience=Patience,DropoutRate=DropoutRate,modelDir=modelDir)
         # modelDir=Training(alloc_day=alloc_day,clust_fln=cluster_ref_fln,modelDir=modelDir,**kwargs)
     
 
@@ -495,6 +495,9 @@ def alloc_NN(data,retrain=True,alloc_day=None,cluster_ref_fln=None,numDeaths=5,n
     for i,clust in enumerate(cube_cluster_data):
         # Get rows related to the given state
         clust_rows = cluster_data[cluster_data['cluster'] == clust]
+        if len(clust_rows)==0:
+            print('Empty Cluster')
+            continue
         fips_list=clust_rows.fips.unique()
         Xpred=[]
         trainedFips=[]
