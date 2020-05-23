@@ -248,7 +248,8 @@ def alloc_fromCluster(data, cluster_ref_fln,alloc_day=None,num_alloc_days=5):
         # Assumes cluster fips are <1000 and counties are >1000
     data_cnty = data[:,:,data[0,0,:] >= 1000]
     data = data[:,:,data[0,0,:] < 1000]
-
+    if data.size==0:
+        return data_cnty
     ##-- Separate input cube into FIPS layer and data layer
     cube_cluster_data = data[0,0,:].astype('int').tolist()    # cast to int
     cube_deaths_data = data[1:,:,:].copy()
@@ -421,7 +422,8 @@ def alloc_NN(data,retrain=True,alloc_day=None,cluster_ref_fln=None,numDeaths=5,n
         # Assumes cluster fips are <1000 and counties are >1000
     data_cnty = data[:,:,data[0,0,:] >= 1000]
     data = data[:,:,data[0,0,:] < 1000]
-
+    if data.size==0:
+        return data_cnty
     ##-- Separate input cube into FIPS layer and data layer
     cube_cluster_data = data[0,0,:].astype('int').tolist()    # cast to int
     cube_deaths_data = data[1:,:,:].copy()
@@ -462,7 +464,7 @@ def alloc_NN(data,retrain=True,alloc_day=None,cluster_ref_fln=None,numDeaths=5,n
         mobilityDF=pd.read_csv(r'data\us\mobility\DL-us-mobility-daterow.csv')[['fips','date','m50_index']]
         df=df.merge(mobilityDF,how='inner',on=['date','fips'])
     else:
-        df.insert(-1,'m50_index',np.nan*np.zeros(len(df)))
+        df.insert(df.shape[1],'m50_index',np.nan*np.zeros(len(df)))
     df.loc[:,'date']=pd.to_datetime(df.date)
     df=df[df.date<=lst_date]
     
@@ -496,7 +498,7 @@ def alloc_NN(data,retrain=True,alloc_day=None,cluster_ref_fln=None,numDeaths=5,n
         # Get rows related to the given state
         clust_rows = cluster_data[cluster_data['cluster'] == clust]
         if len(clust_rows)==0:
-            print('Empty Cluster')
+            # print('Empty Cluster')
             continue
         fips_list=clust_rows.fips.unique()
         Xpred=[]

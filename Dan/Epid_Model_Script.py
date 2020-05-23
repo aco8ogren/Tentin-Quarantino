@@ -25,7 +25,7 @@ if __name__ == '__main__':
     #-- Flag to choose whether to train the model
         # If this is true, the output file from this run will be used for
         # the remainder of the sections
-    isTrainModel = True
+    isTrainModel = False
 
     #-- Define control parameters
     # Flag to choose whether to save the results or not
@@ -151,7 +151,7 @@ if __name__ == '__main__':
     #**** Define control parameters ****
     #-- Options for allocation using naive method
     # Flag to distribue state deaths amongst counties
-    isAllocCounties = True
+    isAllocCounties = False
     # Allocating using the mean number of num_alloc_days days BEFORE alloc_day
     num_alloc_days=5
     alloc_day=train_til
@@ -160,25 +160,25 @@ if __name__ == '__main__':
 
     #-- Options for allocation using Neural Net
     # Flag to distribute deaths with neural net
-    isAllocNN=False
+    isAllocNN=True
     # Number of days of death inputs
-    numDeaths=5
+    numDeaths=10
     # Number of days of cases inputs
-    numCases=5
+    numCases=10
     # Number of days of mobility inputs
-    numMobility=5
+    numMobility=10
     # Number of days of deaths outputs to average over
-    lenOutput=5
+    lenOutput=10
     # Flag to remove data points with zero deaths for inputs and output
     remove_sparse=True
     # Number of epochs with no decrease in validation loss before training stops
-    Patience=4
+    Patience=10
     # Dropout rate for dropout layers between the two hidden dense layers
-    DropoutRate=.1
+    DropoutRate=0.1
     # Flag to retrain neural net or just look for model in directory
     retrain=True
     # Directory to save or load model from
-    modelDir=r'Josh\Alloc_NN\ModelSaves\detective_work'
+    modelDir=r'Josh\Alloc_NN\ModelSaves\OptBest'
 
 
 
@@ -187,7 +187,7 @@ if __name__ == '__main__':
     format_flnm_in = r'Alex\PracticeOutputs\Debug.npy'
 
     #-- Provide filename for output file 
-    format_flnm_out = os.path.splitext(format_flnm_in)[0] + '.csv'
+    format_flnm_out = os.path.splitext(format_flnm_in)[0] + 'OptBest.csv'
 
 
 
