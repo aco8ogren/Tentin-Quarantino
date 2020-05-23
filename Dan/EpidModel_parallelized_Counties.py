@@ -5,14 +5,14 @@ import numpy as np
 import scipy.integrate
 import matplotlib.pyplot as plt
 
-import bokeh.io
-import bokeh.application
-import bokeh.application.handlers
-import bokeh.models
-import bokeh.plotting as bkp
+# import bokeh.io
+# import bokeh.application
+# import bokeh.application.handlers
+# import bokeh.models
+# import bokeh.plotting as bkp
 
 from scipy.optimize import least_squares
-from bokeh.models import Span
+# from bokeh.models import Span
 
 import itertools
 
@@ -30,6 +30,9 @@ from scipy.linalg import svd
 from sklearn.metrics import mean_squared_error
 
 import os
+
+from pathlib import Path
+from datetime import datetime as dt
 
 
 # %%
@@ -256,64 +259,97 @@ def plot_with_errors_sample_z(res, df, mobility_df, region, d_thres, const, HYPE
     I_A = s[:,2]
     I_S = s[:,3]
     R = s[:,4]
-    D = s[:,5]
+    D = s[:,5]  
 
-    #-- Perform bokeh stuff when not multiprocessing (so that plots are actually shown)
-    
-    t = np.arange(0, len(data))
-    tp = np.arange(0, int(np.round(len(data)*extrapolate)))
+    #-- Plot with matplotlib (simpler and more portable than bokeh)
+    if const['isSaveMatplot']:
+        #-- Create the Plot
+        # Create time-axis for real data
+        t = np.arange(0, len(data))
+        # Create time-axis for predicted data
+        tp = np.arange(0, int(np.round(len(data)*extrapolate)))
 
-    ptit = '%s, %s - (%d) - SEIIRD+Q Model'%(const['fips_to_county'][region], const['fips_to_state'][region], region)
-    
-    if True:
-        plt.plot(tp,D,color='black')
+        # Show optimal deaths (from least_squares optimizer)
+        plt.plot(tp,D, color='black', label='Optimized')
+
+        # Plot uncertainty regions
+        quantiles = [10, 20, 30, 40]
+        for quantile in quantiles:
+            s1 = np.percentile(all_s, quantile, axis=0)
+            s2 = np.percentile(all_s, 100-quantile, axis=0)
+            plt.fill_between(tp, s1[:,5], s2[:,5], color='black', alpha=quantile/100)
+        # Show predicted deaths (median of perdictions)
         dmed = np.percentile(all_s, 50, axis=0)
-        plt.plot(tp, dmed[:,5], color='red')
-        plt.scatter(t,data['deaths'],color = 'black')
+        plt.plot(tp, dmed[:,5], color='red', label='Median')
+
+        # Show actual deaths
+        plt.scatter(t,data['deaths'], color = 'black', label='Actual')
+        # Add title
+        ptit = '%s, %s - (%d) - SEIIRD+Q Model'%(const['fips_to_county'][region], const['fips_to_state'][region], region)
         plt.title(ptit)
-        plt.savefig(ptit + ".pdf")
+        # Add legend
+        plt.legend()
+
+        # Add boundary 
+        if boundary is not None:
+            plt.axvline(x=boundary, color='black')
+        
+
+        #-- Save the Plot
+        # Get date and time to create unique folder
+        tim = dt.now().strftime("m%m_d%d_h%Hm%Ms%S/")
+        # Create filename (with full path)
+        tmp_flm = "OutputPlots/" + tim + ptit + ".pdf"
+        # Create directory based on time (if it doesn't exist)
+        Path(tmp_flm).parent.mkdir(parents=True, exist_ok=True)
+        # Save figure
+        plt.savefig(tmp_flm)
+
+
+        #-- Close figure so all plots are unique
         plt.close()
 
-    if (not const['isMultiProc']) and const['isPlotBokeh']:
-        p = bkp.figure(plot_width=600,
-                                plot_height=400,
-                                title = ptit,
-                                x_axis_label = 't (days)',
-                                y_axis_label = '# people')
 
-    quantiles = [10, 20, 30, 40]
-    for quantile in quantiles:
-        s1 = np.percentile(all_s, quantile, axis=0)
-        s2 = np.percentile(all_s, 100-quantile, axis=0)
-        if (not const['isMultiProc']) and const['isPlotBokeh']:
-            if plot_asymptomatic_infectious:
-                p.varea(x=tp, y1=s1[:, 2], y2=s2[:, 2], color='red', fill_alpha=quantile/100) # Asymptomatic infected
-            if plot_symptomatic_infectious:
-                p.varea(x=tp, y1=s1[:, 3], y2=s2[:, 3], color='purple', fill_alpha=quantile/100) # Symptomatic infected
-            p.varea(x=tp, y1=s1[:, 5], y2=s2[:, 5], color='black', fill_alpha=quantile/100) # deaths
-    
-    if (not const['isMultiProc']) and const['isPlotBokeh']:
-        if plot_asymptomatic_infectious:
-            p.line(tp, I_A, color = 'red', line_width = 1, legend_label = 'Asymptomatic infected')
-        if plot_symptomatic_infectious:
-            p.line(tp, I_S , color = 'purple', line_width = 1, legend_label = 'Symptomatic infected')
-        p.line(tp, D, color = 'black', line_width = 1, legend_label = 'Deceased')
-    
-    if (not const['isMultiProc']) and const['isPlotBokeh']:
-        # death
-        p.circle(t, data['deaths'], color ='black')
-        # quarantined
-        if plot_symptomatic_infectious:
-            p.circle(t, data['cases'], color ='purple')
-        if boundary is not None:
-            vline = Span(location=boundary, dimension='height', line_color='black', line_width=3)
-            p.renderers.extend([vline])
-        p.legend.location = 'top_left'
-        bokeh.io.show(p)
-    D_quantiles = np.array([s1[:,5],s2[:,5]])
-    D
 
-    return all_s,D_quantiles,D,errors
+    # #-- Perform bokeh stuff when not multiprocessing (so that plots are actually shown)
+    # if (not const['isMultiProc']) and const['isPlotBokeh']:
+    #     p = bkp.figure(plot_width=600,
+    #                             plot_height=400,
+    #                             title = ptit,
+    #                             x_axis_label = 't (days)',
+    #                             y_axis_label = '# people')
+
+    # quantiles = [10, 20, 30, 40]
+    # for quantile in quantiles:
+    #     s1 = np.percentile(all_s, quantile, axis=0)
+    #     s2 = np.percentile(all_s, 100-quantile, axis=0)
+    #     if (not const['isMultiProc']) and const['isPlotBokeh']:
+    #         if plot_asymptomatic_infectious:
+    #             p.varea(x=tp, y1=s1[:, 2], y2=s2[:, 2], color='red', fill_alpha=quantile/100) # Asymptomatic infected
+    #         if plot_symptomatic_infectious:
+    #             p.varea(x=tp, y1=s1[:, 3], y2=s2[:, 3], color='purple', fill_alpha=quantile/100) # Symptomatic infected
+    #         p.varea(x=tp, y1=s1[:, 5], y2=s2[:, 5], color='black', fill_alpha=quantile/100) # deaths
+    
+    # if (not const['isMultiProc']) and const['isPlotBokeh']:
+    #     if plot_asymptomatic_infectious:
+    #         p.line(tp, I_A, color = 'red', line_width = 1, legend_label = 'Asymptomatic infected')
+    #     if plot_symptomatic_infectious:
+    #         p.line(tp, I_S , color = 'purple', line_width = 1, legend_label = 'Symptomatic infected')
+    #     p.line(tp, D, color = 'black', line_width = 1, legend_label = 'Deceased')
+    
+    # if (not const['isMultiProc']) and const['isPlotBokeh']:
+    #     # death
+    #     p.circle(t, data['deaths'], color ='black')
+    #     # quarantined
+    #     if plot_symptomatic_infectious:
+    #         p.circle(t, data['cases'], color ='purple')
+    #     if boundary is not None:
+    #         vline = Span(location=boundary, dimension='height', line_color='black', line_width=3)
+    #         p.renderers.extend([vline])
+    #     p.legend.location = 'top_left'
+    #     bokeh.io.show(p)
+
+    return all_s,D,errors
 
 
 # %%
@@ -402,9 +438,9 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
                                 args=(data,mobility_data, HYPERPARAMS), 
                                 bounds=np.transpose(np.array(const['ranges'])),
                                 jac = '2-point',
-                                verbose = 2)
+                                verbose = const['least_squares_verbosity'])
             # plot_with_errors_sample_z(res, const['params'], initial_conditions, main_df, mobility_df, state, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True);
-            all_s, _, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['train_Dfrom'], const, HYPERPARAMS, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
+            all_s, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['train_Dfrom'], const, HYPERPARAMS, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
             toc = time.time()
             cube[0,:,ind] = fips
             # CONSIDER changing this to the first day when train_Dfrom was crossed
@@ -452,9 +488,9 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
                     isMultiProc = False,workers = 1,
                     train_til = '2020 04 24',train_Dfrom = 7,min_train_days = 5,
                     isSubSelect = True,just_train_these_fips = [36061],
-                    isPlotBokeh = False, 
+                    isPlotBokeh = False, isSaveMatplot = False, 
                     isConstInitCond = True, init_vec=(2, 0.85, 3),
-                    verbosity = 3,
+                    verbosity = 3, least_squares_verbosity = 0,
                     isCluster=False, cluster_max_radius = 2):
                     
 
@@ -515,9 +551,9 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         # When isMultiProc=True, bokeh will cause errors so we ignore this flag
     # isPlotBokeh     = False      
     # Turn on plotting if available
-    if (not isMultiProc) and isPlotBokeh:
-        bokeh.io.output_notebook()
-        hv.extension('bokeh')
+    # if (not isMultiProc) and isPlotBokeh:
+    #     bokeh.io.output_notebook()
+    #     hv.extension('bokeh')
 
 
     # %%
@@ -885,8 +921,10 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     const['min_train_days'] = min_train_days
     const['isMultiProc'] = isMultiProc
     const['isPlotBokeh'] = isPlotBokeh
+    const['isSaveMatplot'] = isSaveMatplot
     const['isConstInitCond'] = isConstInitCond
     const['verbosity'] = verbosity
+    const['least_squares_verbosity'] = least_squares_verbosity
     # Explanation for these next to vars is in par_fun
     const['init_T'] = init_vec[0]         # scaling factor for total number of cases relative to reported
     const['init_R'] = init_vec[1]      # Fraction of total infected that are asymptomatic
