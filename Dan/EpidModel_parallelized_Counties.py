@@ -52,20 +52,24 @@ def q(t, N, shift,mobility_data,offset):
         moving_list = [mobility_data[col].values for col in list(mobility_data.columns) if is_number(col) and col>=offset]
         moving = np.squeeze(np.array(moving_list))/100 
         if len(moving_list)==0:
-            moving = (100 - 5*(t-offset))/100
+            # moving = (100 - 5*(t-offset))/100
+            timescale = 75
+            moving = exp(-(t-offset)/time_scale)
     else:
-        moving = (100 - 5*(t-offset))/100
+        # moving = (100 - 5*(t-offset))/100
+        timescale = 75
+        moving = exp(-(t-offset)/time_scale)
         
     Q = N*(1-moving-shift)
     try:
         if np.round(t) >= len(Q):
             if len(Q)>0:
-                return Q[-1]
+                return np.maximum(Q[-1],0)
     except TypeError:
         # print('ERROR in q(): Q was a scalar you poop')
-        return Q
+        return np.maximum(Q,0)
 
-    return Q[int(np.round(t))]
+    return np.maximum(Q[int(np.round(t))],0)
 
 def is_number(s):
     try:
@@ -95,11 +99,14 @@ def seiirq(dat, t, params, N, max_t, offset,mobility_data):
     i_s = dat[3]
 
     # TODO: What's the point of tau if it just returns 0? Is this something we should update?
-    Qind = (q(t + offset, N, shift,mobility_data,offset) - tau(t + offset)*i_a)/(s + e + i_a - tau(t + offset)*i_a)
-    Qia = Qind + (1-Qind)*tau(t + offset)
+    # Qind = (q(t + offset, N, shift,mobility_data,offset) - tau(t + offset)*i_a)/(s + e + i_a - tau(t + offset)*i_a)
+    Qind = 1 #q(t + offset, N, shift,mobility_data,offset)/(s + e + i_a)
+    # Qia = Qind + (1-Qind)*tau(t + offset)
+    Qia = Qind
     
     dsdt = - beta * s * i_a * (1 - Qind) * (1 - Qia) / N
-    dedt = beta * s * i_a* (1 - Qind) * (1 - Qia) / N  - alpha * e
+    # dedt = beta * s * i_a* (1 - Qind) * (1 - Qia) / N  - alpha * e
+    dedt = dsdt  - alpha * e
     diadt = alpha * e - (sigma + ra) * i_a
     disdt = sigma * i_a - (delta + rs) * i_s
     dddt = delta * i_s
@@ -442,7 +449,7 @@ def apply_by_mp(func, workers, args):
     
     
 # %% MAIN SCRIPT
-def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
+def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2,25),
                     isSaveRes = False,sv_flnm_np='',sv_flnm_mat = '',
                     isMultiProc = False,workers = 1,
                     train_til = '2020 04 24',train_Dfrom = 7,min_train_days = 5,
@@ -479,6 +486,9 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     # Threshold of deaths at and below which a COUNTY will not be trained on
         # Filters which COUNTIES are looped over in optimization/minimization loop
     D_THRES = HYPERPARAMS[1]
+
+    # Threshold of deaths below which will be automatically erfed (preventing them from being clustered)
+    ERF_THRES = HYPERPARAMS[4]
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
         # OR: leave as None to train until the latest data for which there is data
@@ -689,8 +699,12 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     # Find counties with enough deaths to be trained on ( >= D_THRES)
     list_of_fips_to_train = list(fips_to_maxdeaths[fips_to_maxdeaths >= D_THRES].index)
 
-    # Find counties with too few deaths to be trained on ( < D_THRES)
-    list_of_low_death_fips = list(fips_to_maxdeaths[fips_to_maxdeaths < D_THRES].index)
+    # Find counties with too few deaths to be trained on ( < D_THRES) AND ( > ERF_THRES)
+    list_of_low_death_fips_D_THRES = list(fips_to_maxdeaths[fips_to_maxdeaths < D_THRES].index)
+
+    list_of_low_death_fips = list(np.intersect1d(list(fips_to_maxdeaths[fips_to_maxdeaths >= ERF_THRES].index), list_of_low_death_fips_D_THRES))
+    
+    list_of_fips_to_erf = list(np.setdiff1d(list_of_low_death_fips_D_THRES,list_of_low_death_fips))
     
     # Cluster low deaths counties
     if isCluster and len(list_of_low_death_fips)>0:
@@ -706,7 +720,9 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         # Generate dataframe (clusteringDF) of clusters with at least D_THRES deaths ON clusterDate (train_til). This dataframe
             # relates each county to its cluster number, along with some 
             # additional data such as deaths on train_till for the counties and clusters 
-        clusteringDF,list_of_fips_to_erf=JMC(list_of_low_death_fips,clusterDate,D_THRES,Fpath=sv_clust_flnm,cluster_radius = cluster_max_radius)
+        clusteringDF,additional_fips_to_erf=JMC(list_of_low_death_fips,clusterDate,D_THRES,Fpath=sv_clust_flnm,cluster_radius = cluster_max_radius)
+        if len(additional_fips_to_erf > 0):
+            list_of_fips_to_erf = list_of_fips_to_erf + list(additional_fips_to_erf)
         # get list of all counties that were successfully clustered (without regard to deaths in cluster)
         list_of_clustered_fips=clusteringDF.fips.unique()
 
@@ -751,9 +767,20 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         fips_to_maxdeaths = df.groupby('fips')['deaths'].max()
 
     else:
+        clusteringDF = None
         list_of_fips_to_erf = list_of_low_death_fips
     
     df= df[~df.fips.isin(list_of_fips_to_erf)]
+
+    if verbosity >= 2:
+        print('============================================')
+        if clusteringDF is not None:
+            print('Clustering',len(list_of_clustered_fips),'counties')
+            print('into',len(np.unique(clusteringDF['cluster'].values)),'clusters')
+        else:
+            print('Clustering',0,'counties')
+            print('into',0,'clusters')
+        print('============================================')
 
     # %% 
     # Perform ERF on remaining FIPS
@@ -762,6 +789,16 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         from Alex import copy_of_erf_model
         from benchmark_models import utils
 
+        if verbosity >= 3:
+            erf_verbosity = True
+        else:
+            erf_verbosity = False
+        
+        if verbosity >= 2:
+            print('============================================')
+            print('Erfing',len(list_of_fips_to_erf),'counties.')
+            print('============================================')
+
         erf_df = utils.get_processed_df()
         tic_erf = time.time()
         erf_cube = copy_of_erf_model.predict_counties(erf_df, list_of_fips_to_erf,
@@ -769,7 +806,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
                                                                     out_file='erf_model_predictions.csv', 
                                                                     boundary_date=train_til_for_erf,
                                                                     key='deaths',
-                                                                    verbose = True)
+                                                                    verbose = erf_verbosity)
         toc_erf = time.time()
         print('Fitting erf done. Time elapsed', np.round(toc_erf-tic_erf,2),'sec')
     else:
@@ -842,7 +879,19 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     #-- Split into parallelizable chunks
         # Here I am splitting arbitrarily. Could consider ordering by number of days of data and then splitting s.t. we evenly 
         # distribute the work among the cores. This'll reduce net runtime since no core will be running longer than the others
-    fips_for_cores = np.array_split(list_of_fips_to_train,workers)
+    rem_workers = workers
+    slow_fips = [53033,36061]
+    slow_fips_to_train = list(np.intersect1d(slow_fips,list_of_fips_to_train))
+    if workers > len(slow_fips_to_train):
+        fips_for_cores = []
+        for fips in slow_fips:
+            if fips in list_of_fips_to_train:
+                list_of_fips_to_train.remove(fips)
+                fips_for_cores.append(np.array([fips]))
+                rem_workers = rem_workers - 1
+
+    fips_for_cores = fips_for_cores + np.array_split(list_of_fips_to_train,rem_workers)
+
     # Split the dataframes by core allocations
     main_dfs = [df[df.fips.isin(fips_in_core)] for fips_in_core in fips_for_cores]
     mobility_dfs = [mobility_df[mobility_df.fips.isin(fips_in_core)] for fips_in_core in fips_for_cores]

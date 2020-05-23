@@ -33,7 +33,7 @@ if __name__ == '__main__':
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
-    sv_flnm_mat = 'Dan\\PracticeOutputs\\Debugging.mat'
+    sv_flnm_mat = 'Alex\\PracticeOutputs\\Debug.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
@@ -41,27 +41,31 @@ if __name__ == '__main__':
     # Flag to choose whether multiprocessing should be used
     isMultiProc = True
     # Number of cores to use (logical cores, not physical cores)
-    workers = 8
+    workers = 20
 
 
     #-- Filtering parameters
     # Threshold of deaths at and below which a COUNTY will not be trained on
         # Filters which COUNTIES are looped over in optimization/minimization loop
-    D_THRES = 97
+    D_THRES = 62
+
+    # Threshold of deaths below which will be automatically erfed (preventing them from being clustered)
+    ERF_THRES = 25
+
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
         # OR: leave as None to train until the latest data for which there is data
-    train_til = '2020 05 10'
+    train_til = '2020 05 08'
     # Minimum deaths considered in training
         # Sets the first DAY which will be calculated as part of the optimization
         # by only including days with more than this many deaths. THIS IS DIFFERENT than 
         # D_THRES. D_THRES selects which counties are trained on and train_Dfrom selects 
         # which DAYS are used for the optimization
-    train_Dfrom = 7
+    train_Dfrom = 15
     # Minimum number of days required for a county to be trained on
         # After filtering using train_Dfrom and D_THRES, this makes sure that there
         # are at least min_train_days worth of days to train the model on (for fit_leastsqz)
-    min_train_days = 5
+    min_train_days = 15
 
 
     #-- Clustering settings
@@ -74,15 +78,21 @@ if __name__ == '__main__':
 
     #-- Sub-select counties to train on
     # Flag to choose whether to sub-select
-    isSubSelect = True
+    isSubSelect = False
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
-    just_train_these_fips = [36061, 6037,
-       21131, 21051, 21193, 21119, 21109, 21189, 21025, 21071, 21115,
-       21197, 21175, 21165, 21049, 21173, 21127, 21011, 21205, 21043,
-       21181, 21069, 21019, 39087, 21089, 21135, 21161, 21023, 39145,
-       39001, 39015, 39079, 39131, 39025, 39071, 39141, 39027, 39047,
-       39129, 39057, 39113, 39045, 39097, 39023, 39109]
+    just_train_these_fips = [36061, 53033,39099,39095,9003,36027,8031,42101,36001,34039,6085,6073,6037,
+                            21131, 21051, 21193, 21119, 21109, 21189, 21025, 21071, 21115,
+                            21197, 21175, 21165, 21049, 21173, 21127, 21011, 21205, 21043,
+                            21181, 21069, 21019, 39087, 21089, 21135, 21161, 21023, 39145,
+                            39001, 39015, 39079, 39131, 39025, 39071, 39141, 39027, 39047,
+                            39129, 39057, 39113, 39045, 39097, 39023, 39109]
+    
+    #    21131, 21051, 21193, 21119, 21109, 21189, 21025, 21071, 21115,
+    #    21197, 21175, 21165, 21049, 21173, 21127, 21011, 21205, 21043,
+    #    21181, 21069, 21019, 39087, 21089, 21135, 21161, 21023, 39145,
+    #    39001, 39015, 39079, 39131, 39025, 39071, 39141, 39027, 39047,
+    #    39129, 39057, 39113, 39045, 39097, 39023, 39109]
        #35006, 35043, 35031]
         # GOOD 6037,17031, TROUBLE 53061,36059,53033  NOT SURE 36087
     #[36061, 36059, 26163, 17031, 36103, 36119, 34013, 34003, 6037,  9001,  34017, 26125, 25017, 34039, 26099, 9003] 
@@ -91,11 +101,11 @@ if __name__ == '__main__':
     #-- Method used for choosing initial conditions
         # True: Use the same vector (hardcoded) as the initial conditions for all counties
         # False: Calculate unique initial conditions for each county 
-    isConstInitCond = True
+    isConstInitCond = False
     # When calculating unique conditions for each county, define fudge factors:
-    init_vec = (4.901,          # T : Is = T*cases      Old: 3.933
-                0.020,          # R : Ia = R*Itot       Old: 0.862
-                0.114)          # F : E  = F*Is         Old: 3.014
+    init_vec = (4.15,          # T : Is = T*cases      Old: 3.933
+                0.37,          # R : Ia = R*Itot       Old: 0.862
+                0.08)          # F : E  = F*Is         Old: 3.014
 
 
     #-- When not multiprocessing, enable bokeh plotting (since won't cause issue)
@@ -129,9 +139,9 @@ if __name__ == '__main__':
 
 
     #-- Set hyperparameters
-    p_err_frac = 0.0995764604328379   # The size of the uncertainty that we have on our optimal SEIIRQD parameters. This affects the size of our quantile differences.
-    death_weight = 5   # The weight with which we multiply the death error in SEIIRQD optimization. The death data is trusted death_weight times more than the symptomatic infected data.
-    alpha = 0.00341564933361549         # alpha of the LeakyReLU for modifying the symptomatic infected error. i.e. if alpha = 0 ==> no penalty for overestimating Sympt Inf. alpha = 1 ==> as much penalty for overestimating as underestimating.
+    p_err_frac = 0.09   # The size of the uncertainty that we have on our optimal SEIIRQD parameters. This affects the size of our quantile differences.
+    death_weight = 8   # The weight with which we multiply the death error in SEIIRQD optimization. The death data is trusted death_weight times more than the symptomatic infected data.
+    alpha = 0         # alpha of the LeakyReLU for modifying the symptomatic infected error. i.e. if alpha = 0 ==> no penalty for overestimating Sympt Inf. alpha = 1 ==> as much penalty for overestimating as underestimating.
 
 # %% Setup Formatter run
 
@@ -174,7 +184,7 @@ if __name__ == '__main__':
 
     #-- When a model was not trained, provide filename to format
         # if a model was trained, that filename will automatically be used
-    format_flnm_in = r'Josh\PracticeOutputs\detective_work.npy'
+    format_flnm_in = r'Alex\PracticeOutputs\Debug.npy'
 
     #-- Provide filename for output file 
     format_flnm_out = os.path.splitext(format_flnm_in)[0] + '.csv'
@@ -187,11 +197,11 @@ if __name__ == '__main__':
     isEval = True
     #-- When model was not formatted, provide a filename to evaluate
         # if a model was formatted, that filename will automatically be used
-    eval_flnm_in = format_flnm_out
+    eval_flnm_in = 'Alex\\PracticeOutputs\\Baseline_with_clusters.csv'
 
     #-- Day from which we should evaluate 
         # in format 'YYYY-MM-DD'
-    eval_start_day = '2020-05-11'
+    eval_start_day = '2020-05-09'
 
     #-- Day until which we should evaluate
         # in format 'YYYY-MM-DD'
@@ -256,7 +266,7 @@ if __name__ == '__main__':
     def runFull(init_vec):
         if isTrainModel:
             print('\n\n------ Training Model ------')
-            SEIIRQD_model(HYPERPARAMS = (p_err_frac,D_THRES,death_weight,alpha),
+            SEIIRQD_model(HYPERPARAMS = (p_err_frac,D_THRES,death_weight,alpha,ERF_THRES),
                             isSaveRes = isSaveRes,
                             sv_flnm_np=sv_flnm_np,
                             sv_flnm_mat = sv_flnm_mat,
@@ -314,9 +324,14 @@ if __name__ == '__main__':
                 print('*** Input filename:\n    %s'%eval_flnm_in)
                 print('\n\n')
             
+            only_score_these_fips = None
+            if isSubSelect:
+                only_score_these_fips = just_train_these_fips
+
             score = evaluate_predictions(eval_flnm_in,
                                             eval_start_day,
-                                            end_date = eval_end_day)
+                                            end_date = eval_end_day,
+                                            only_score_these_fips = only_score_these_fips)
             return score
 
         
