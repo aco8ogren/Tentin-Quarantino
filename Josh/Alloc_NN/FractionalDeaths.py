@@ -42,7 +42,7 @@ def Training(alloc_day,clust_fln,numDeaths=5,numCases=5,numMobility=5,lenOutput=
         mobilityDF=pd.read_csv(r'data\us\mobility\DL-us-mobility-daterow.csv')[['fips','date','m50_index']]
         df=df.merge(mobilityDF,how='inner',on=['date','fips'])
     else:
-        df.insert(-1,'m50_index',np.nan*np.zeros(len(df)))
+        df.insert(df.shape[1],'m50_index',np.nan*np.zeros(len(df)))
     df.loc[:,'date']=pd.to_datetime(df.date)
     df=df[df.date<=alloc_day]
     Inputs=[]
