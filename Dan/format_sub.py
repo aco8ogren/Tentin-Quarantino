@@ -56,6 +56,8 @@ def format_file_for_evaluation( input_fln,
                                 numMobility=5,
                                 lenOutput=5,
                                 remove_sparse=True,
+                                Patience=4,
+                                DropoutRate=.1,
                                 modelDir=None):
     # if alloc_day is not None:
     #     alloc_day=
@@ -120,6 +122,8 @@ def format_file_for_evaluation( input_fln,
                             numMobility=numMobility,
                             lenOutput=lenOutput,
                             remove_sparse=remove_sparse,
+                            Patience=Patience,
+                            DropoutRate=DropoutRate,
                             modelDir=modelDir)
 
 
