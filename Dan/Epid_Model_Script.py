@@ -2,6 +2,7 @@
 if __name__ == '__main__':
     import os
     import sys
+    from datetime import datetime as dt
 
     HomeDIR='Tentin-Quarantino'
     wd=os.path.dirname(os.path.realpath(__file__))
@@ -19,19 +20,20 @@ if __name__ == '__main__':
     from Dan.format_sub import format_file_for_evaluation
 
 
-# -%% Setup model training run
+# %% Setup model training run
 
     #-- Flag to choose whether to train the model
         # If this is true, the output file from this run will be used for
         # the remainder of the sections
     isTrainModel = True
+
     #-- Define control parameters
     # Flag to choose whether to save the results or not
     isSaveRes = True
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
-    sv_flnm_mat = 'Alex\\PracticeOutputs\\can_we_save_time.mat'
+    sv_flnm_mat = 'Dan\\PracticeOutputs\\Debugging.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
@@ -39,7 +41,7 @@ if __name__ == '__main__':
     # Flag to choose whether multiprocessing should be used
     isMultiProc = True
     # Number of cores to use (logical cores, not physical cores)
-    workers = 20
+    workers = 8
 
 
     #-- Filtering parameters
@@ -72,7 +74,7 @@ if __name__ == '__main__':
 
     #-- Sub-select counties to train on
     # Flag to choose whether to sub-select
-    isSubSelect = False
+    isSubSelect = True
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
     just_train_these_fips = [36061, 6037,
@@ -99,11 +101,21 @@ if __name__ == '__main__':
     #-- When not multiprocessing, enable bokeh plotting (since won't cause issue)
     # Flag to stating whether to plot. This only matters when not multiprocessing (isMultiProc=False)
         # When isMultiProc=True, bokeh will cause errors so we ignore this flag
-    isPlotBokeh     = False
+    # ********************************************************
+    # NOTE: *** This feature is now DEPRACATED. Plotting is done with matplotlib now ***
+    # ********************************************************
+    # isPlotBokeh     = False
+
+
+    #-- Save figures of fit performance (with error bars) using matplotlib
+    # Figures will automatically be saved as pdf's into a NEW directory under:
+        # OutputPlots/m%m_d%d_h%Hm%Ms%S/ 
+        # Where the subdirectory is a time-tag to create unique directories
+    isSaveMatplot   = True
 
 
     #-- Set verbosity for printing
-    #-- Verbosity explanation:
+    #-- (OUR SCRIPT) Verbosity explanation:
     # There are multiple levels of verbosity based on the provided integer
     #   0 :     No print statements are executed
     #   1 :     Only total time is printed
@@ -111,18 +123,23 @@ if __name__ == '__main__':
     #   3 :     (DEFAULT) All print statements are executed
     # *** Error-related prints are always printed
     verbosity = 3
+    #-- (LEAST_SQUARES FUNCTION) Verbosity explanation:
+    # The verbosity levels are the same as the scipy.optimize.least_squares defines
+    least_squares_verbosity = 0
+
 
     #-- Set hyperparameters
     p_err_frac = 0.0995764604328379   # The size of the uncertainty that we have on our optimal SEIIRQD parameters. This affects the size of our quantile differences.
     death_weight = 5   # The weight with which we multiply the death error in SEIIRQD optimization. The death data is trusted death_weight times more than the symptomatic infected data.
     alpha = 0.00341564933361549         # alpha of the LeakyReLU for modifying the symptomatic infected error. i.e. if alpha = 0 ==> no penalty for overestimating Sympt Inf. alpha = 1 ==> as much penalty for overestimating as underestimating.
 
-# -%% Setup Formatter run
+# %% Setup Formatter run
 
     #-- Flag to choose whether to format a model's .mat output file
     isFormat = True
 
-    #-- Define control parameters
+    #**** Define control parameters ****
+    #-- Options for allocation using naive method
     # Flag to distribue state deaths amongst counties
     isAllocCounties = True
     # Allocating using the mean number of num_alloc_days days BEFORE alloc_day
@@ -131,8 +148,9 @@ if __name__ == '__main__':
     # Flag to translate cummulative data to daily counts
     isComputeDaily = True
 
+    #-- Options for allocation using Neural Net
     # Flag to distribute deaths with neural net
-    isAllocNN = False
+    isAllocNN=False
     # Number of days of death inputs
     numDeaths=5
     # Number of days of cases inputs
@@ -163,7 +181,7 @@ if __name__ == '__main__':
 
 
 
-# -%% Setup evaluator run
+# %% Setup evaluator run
 
     #-- Flag to choose whether to evaluate a .csv file
     isEval = True
@@ -182,7 +200,7 @@ if __name__ == '__main__':
     eval_end_day = None
 
 
-# -%% (OPTIONAL) Define parameters for init conditional optimization
+# %% (OPTIONAL) Define parameters for init conditional optimization
 
     # @Alex, @Josh: YOU CAN PROBABLY IGNORE THIS SECTION
     # In general, IGNORE this unles you want to repeat the optimizations that Dan is doing
@@ -206,7 +224,7 @@ if __name__ == '__main__':
     random_state = 1234
     HypParamVerbose = True
 
-# -%% Prepare for calls
+# %% Prepare for calls
 
     #-- If the user says to train a model but doesn't save the result, we can't
         # run the remaining sections since we won't have the results to format/eval
@@ -221,12 +239,18 @@ if __name__ == '__main__':
         format_flnm_in = sv_flnm_mat
         format_flnm_out = os.path.splitext(format_flnm_in)[0] + '.csv'
 
-    # If the user formats a model, use the output to evaluate
+    #-- If the user formats a model, use the output to evaluate
     if isEval and isFormat:
         eval_flnm_in = format_flnm_out
 
+    #-- The user needs to select a single allocation method 
+    if isAllocCounties and isAllocNN:
+        raise ValueError("Only a single allocation method should be chosen (isAllocCounties or isAllocNN)")
 
-# -%% Define function that actually runs the code
+    # Get date and time to create unique folder
+    save_time = dt.now().strftime("m%m_d%d_h%Hm%Ms%S/")
+
+# %% Define function that actually runs the code
 # Needed as a function for the optional hyperparameter optimization 
 
     def runFull(init_vec):
@@ -243,10 +267,12 @@ if __name__ == '__main__':
                             min_train_days = min_train_days,
                             isSubSelect = isSubSelect,
                             just_train_these_fips = just_train_these_fips,
-                            isPlotBokeh = isPlotBokeh, 
+                            isSaveMatplot = isSaveMatplot, 
+                            save_time = save_time, 
                             isConstInitCond = isConstInitCond,
                             init_vec = init_vec,
                             verbosity = verbosity,
+                            least_squares_verbosity = least_squares_verbosity, 
                             isCluster = isCluster, cluster_max_radius = cluster_max_radius)
             if isSaveRes and not isRunInitConHyper:
                 print('*** Model results saved to:\n    %s\n    %s'%(sv_flnm_mat, sv_flnm_np))
@@ -295,7 +321,7 @@ if __name__ == '__main__':
 
         
 
-# -%% Run 
+# %% Run 
 
     if isRunInitConHyper:
             

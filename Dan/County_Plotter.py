@@ -34,6 +34,7 @@ hv.extension('bokeh')
 # Top N counties to plot with the most deaths
     # Set to -1 to plot all
 plotN = 20
+# Shift provides an offset for plotN (ie, indexing will be --> shift:shift+plotN)
 shift = 20
 # Data Manipulation flags (should match those used in creating submission file)
 isAllocCounties = True          # Flag to distribue state deaths amongst counties
@@ -64,7 +65,7 @@ svg_flm = 'Dan/MidtermFigs/CountyWideDaily2/'
 #-- Files to utilize
 # Filename for cube of model data
     # should be (row=sample, col=day, pane=state) with state FIPS as beef in row1
-mat_model   = 'Alex\\PracticeOutputs\\fresh.mat'#'Dan\\train_til_today.csv'
+mat_model   = 'Dan\\PracticeOutputs\\Debugging.mat'#'Dan\\train_til_today.csv'
 # Reference file to treat as "true" death counts 
 csv_true    = 'data\\us\\covid\\nyt_us_counties_daily.csv'  # daily county counts (also used for allocating deaths when req.)
 csv_ST_true = 'data\\us\\covid\\nyt_us_states.csv'          # this is cumulative ONLY; no _daily version exists
