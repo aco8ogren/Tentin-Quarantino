@@ -495,6 +495,9 @@ def alloc_NN(data,retrain=True,alloc_day=None,cluster_ref_fln=None,numDeaths=5,n
     for i,clust in enumerate(cube_cluster_data):
         # Get rows related to the given state
         clust_rows = cluster_data[cluster_data['cluster'] == clust]
+        if len(clust_rows)==0:
+            print('Empty Cluster')
+            continue
         fips_list=clust_rows.fips.unique()
         Xpred=[]
         trainedFips=[]

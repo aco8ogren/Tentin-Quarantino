@@ -68,10 +68,13 @@ def Training(alloc_day,clust_fln,numDeaths=5,numCases=5,numMobility=5,lenOutput=
             if len(DF)>=totLen:
                 for i in range(len(DF)-totLen+1):
                     # print(i)
-                    input=[ DF.iloc[i:i+numDeaths].deathsFrac.values, 
-                            DF.iloc[i+numDeaths-numCases:i+numDeaths].casesFrac.values, 
-                            DF.iloc[i+numDeaths-numMobility:i+numDeaths].m50_index.values] 
-                    Inputs.append([element for subList in input for element in subList])
+                    Input=[ DF.iloc[i+lenInput-numDeaths:i+lenInput].deathsFrac.values, 
+                            DF.iloc[i+lenInput-numCases:i+lenInput].casesFrac.values, 
+                            DF.iloc[i+lenInput-numMobility:i+lenInput].m50_index.values] 
+                    Input=[element for subList in Input for element in subList]
+                    if len(Input)!=numDeaths+numCases+numMobility:
+                        raise ValueError('Input lengths are wrong')
+                    Inputs.append(Input)
                     countyDeaths=DF.iloc[i+numDeaths:i+totLen].deaths.sum()
                     clusterDeaths=DF.iloc[i+numDeaths:i+totLen].clusterDeaths.sum()
                     if clusterDeaths==0:

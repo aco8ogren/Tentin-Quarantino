@@ -24,7 +24,7 @@ from Alex.copy_of_evaluator import evaluate_predictions
 
 # %%
 def test_error(HYPERPARAMS,train_til,test_from,test_til): 
-    temp_processed_csv = r'Josh\NN_opt\temp_NN_opt.csv'
+    temp_processed_csv = r'Josh\Alloc_NN\NN_opt\temp_NN_opt.csv'
     numDeaths, numCases, numMobility, lenOutput, remove_sparse, Patience, DropoutRate = HYPERPARAMS
 
     format_file_for_evaluation( input_fln='clustering.mat',
@@ -58,7 +58,7 @@ def f(HYPERPARAMS):
 
 # %%
 if __name__ == '__main__':
-    checkpoint_saver = CheckpointSaver(r'Josh\Alloc_NN\NN_opt\checkpoints', compress=9) # keyword arguments will be passed to `skopt.dump`
+    checkpoint_saver = CheckpointSaver(r'Josh\Alloc_NN\NN_opt\checkpoints.pkl', compress=9) # keyword arguments will be passed to `skopt.dump`
 
     res = gp_minimize(f,                  # the function to minimize
                                         # the bounds on each dimension of x
