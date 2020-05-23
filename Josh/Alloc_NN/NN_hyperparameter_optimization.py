@@ -27,7 +27,7 @@ def test_error(HYPERPARAMS,train_til,test_from,test_til):
     temp_processed_csv = r'Josh\Alloc_NN\NN_opt\temp_NN_opt.csv'
     numDeaths, numCases, numMobility, lenOutput, remove_sparse, Patience, DropoutRate = HYPERPARAMS
 
-    format_file_for_evaluation( input_fln='clustering.mat',
+    format_file_for_evaluation( input_fln='Josh/PracticeOutputs/detective_work.npy',
                                 output_fln=temp_processed_csv,
                                 isAllocCounties = False,
                                 isComputeDaily = True,
@@ -50,7 +50,7 @@ def test_error(HYPERPARAMS,train_til,test_from,test_til):
 
 def f(HYPERPARAMS):
     train_til = '2020 05 10'
-    test_from = '2020 05 10'
+    test_from = '2020 05 11'
     test_til  = None
     
     return test_error(HYPERPARAMS,train_til,test_from,test_til)
@@ -74,13 +74,13 @@ if __name__ == '__main__':
                     # x0 = [.1,100,5,0,4.901,0.020,0.114],   
                     # y0 = [],
                     acq_func="EI",      # the acquisition function
-                    n_calls=3,          # the number of evaluations of f
-                    n_random_starts=2,  # the number of random initialization points
+                    n_calls=80,          # the number of evaluations of f
+                    n_random_starts=20,  # the number of random initialization points
                     noise=0.1**2,       # the noise level (optional)
                     random_state=1234,  # the random seed
                     callback = [checkpoint_saver],
                     verbose = True)   
 # %%
+    print(res)
     fig = plot_convergence(res)
     fig.figure.savefig(r"Josh\Alloc_NN\NN_opt\NN_optimization_convergence.pdf")
-    print(res)

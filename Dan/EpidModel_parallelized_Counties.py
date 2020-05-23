@@ -258,6 +258,14 @@ def plot_with_errors_sample_z(res, df, mobility_df, region, d_thres, const, HYPE
     R = s[:,4]
     D = s[:,5]
 
+    all_s_median = np.percentile(all_s, 50, axis=0)
+    all_s_death_median = all_s_median[:,5]
+    death_diff = all_s_death_median - D
+
+    for i in np.arange(100):
+        all_s[i,:,5] = all_s[i,:,5] - death_diff
+
+
     #-- Perform bokeh stuff when not multiprocessing (so that plots are actually shown)
     
     t = np.arange(0, len(data))
@@ -402,7 +410,9 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
                                 args=(data,mobility_data, HYPERPARAMS), 
                                 bounds=np.transpose(np.array(const['ranges'])),
                                 jac = '2-point',
-                                verbose = 2)
+                                verbose = 0,
+                                ftol = 1e-4,
+                                max_nfev= 200)
             # plot_with_errors_sample_z(res, const['params'], initial_conditions, main_df, mobility_df, state, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True);
             all_s, _, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['train_Dfrom'], const, HYPERPARAMS, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
             toc = time.time()

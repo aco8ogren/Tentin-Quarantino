@@ -408,7 +408,7 @@ def alloc_NN(data,retrain=True,alloc_day=None,cluster_ref_fln=None,numDeaths=5,n
     #           Dimensionality is: [sample, day, county]
     """
     from Josh.Alloc_NN.FractionalDeaths import Training
-    import keras
+    from tensorflow import keras
     ref_data = pd.read_csv(r'data\us\covid\nyt_us_counties_daily.csv')
     ref_data=ref_data[['fips','date','deaths']]
     ref_data.loc[:,'date']=pd.to_datetime(ref_data.date)
