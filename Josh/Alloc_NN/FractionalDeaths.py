@@ -93,10 +93,11 @@ def Training(alloc_day,clust_fln,numDeaths=5,numCases=5,numMobility=5,lenOutput=
 
 
     #%%
-    import keras
-    from keras.layers import Dense
-    from keras.layers import Dropout
-    from keras.callbacks import ModelCheckpoint
+    import tensorflow as tf
+    from tensorflow import keras
+    from tensorflow.keras.layers import Dense
+    from tensorflow.keras.layers import Dropout
+    from tensorflow.keras.callbacks import ModelCheckpoint
     # from keras.utils import np_utils
     from datetime import datetime
     if modelDir is None:
