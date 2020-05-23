@@ -134,15 +134,19 @@ if __name__ == '__main__':
     # Flag to distribute deaths with neural net
     isAllocNN=True
     # Number of days of death inputs
-    numDeaths=2
+    numDeaths=5
     # Number of days of cases inputs
-    numCases=2
+    numCases=5
     # Number of days of mobility inputs
-    numMobility=2
+    numMobility=5
     # Number of days of deaths outputs to average over
     lenOutput=5
     # Flag to remove data points with zero deaths for inputs and output
     remove_sparse=True
+    # Number of epochs with no decrease in validation loss before training stops
+    Patience=4
+    # Dropout rate for dropout layers between the two hidden dense layers
+    DropoutRate=.1
     # Flag to retrain neural net or just look for model in directory
     retrain=True
     # Directory to save or load model from
@@ -268,6 +272,8 @@ if __name__ == '__main__':
                                         numMobility=numMobility,
                                         lenOutput=lenOutput,
                                         remove_sparse=remove_sparse,
+                                        Patience=Patience,
+                                        DropoutRate=DropoutRate,
                                         modelDir=modelDir)
 
 

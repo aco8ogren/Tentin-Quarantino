@@ -20,7 +20,7 @@ os.chdir(cwd)
 
 
 
-def Training(alloc_day,clust_fln,numDeaths=5,numCases=5,numMobility=5,lenOutput=5,remove_sparse=True,modelDir=None):
+def Training(alloc_day,clust_fln,numDeaths=5,numCases=5,numMobility=5,lenOutput=5,remove_sparse=True,Patience=4, DropoutRate=.1,modelDir=None):
 #%% Data formatting
 
     lenInput=np.max([numDeaths,numCases,numMobility])
@@ -118,9 +118,9 @@ def Training(alloc_day,clust_fln,numDeaths=5,numCases=5,numMobility=5,lenOutput=
     #%%
     model=keras.models.Sequential()
     model.add(Dense(X.shape[1],input_dim=X.shape[1],activation='sigmoid'))
-    model.add(Dropout(0.1))
+    model.add(Dropout(DropoutRate))
     model.add(Dense(int(np.floor(X.shape[1]/2)),activation='sigmoid'))
-    model.add(Dropout(0.1))
+    model.add(Dropout(DropoutRate))
     model.add(Dense(1))
     model.compile(loss='mean_squared_error', optimizer='adam')
     #%%
@@ -128,7 +128,7 @@ def Training(alloc_day,clust_fln,numDeaths=5,numCases=5,numMobility=5,lenOutput=
     # filepath=os.path.join(checkpointDir,"model-{epoch:02d}-{loss:.4f}.hdf5")
     # checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
     # callbacks_list = [checkpoint,keras,keras.callbacks.EarlyStopping(monitor='val_loss',mode='min',patience=4)]
-    callbacks_list = [keras.callbacks.EarlyStopping(monitor='val_loss',mode='min',patience=4)]
+    callbacks_list = [keras.callbacks.EarlyStopping(monitor='val_loss',mode='min',patience=Patience)]
     model.fit(X, Y, epochs=200, batch_size=32, callbacks=callbacks_list,validation_split=0.1)
 
 
