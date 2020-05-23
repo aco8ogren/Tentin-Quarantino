@@ -54,7 +54,7 @@ def Training(alloc_day,clust_fln,numDeaths=5,numCases=5,numMobility=5,lenOutput=
     #---------------------------------------------------------
     # uncomment
     for cluster in df.cluster.unique():
-        print(cluster)
+        # print(cluster)
         clusterFips=df[df.cluster==cluster].fips.unique()
         FIPS.extend(clusterFips.tolist())
         for fip in clusterFips:

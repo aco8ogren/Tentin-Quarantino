@@ -26,7 +26,8 @@ from Alex.copy_of_evaluator import evaluate_predictions
 def test_error(HYPERPARAMS,train_til,test_from,test_til): 
     temp_processed_csv = r'Josh\Alloc_NN\NN_opt\temp_NN_opt.csv'
     numDeaths, numCases, numMobility, lenOutput, remove_sparse, Patience, DropoutRate = HYPERPARAMS
-
+    
+    print('numDeaths={}, numCases={}, numMobility={}, lenOutput={}, remove_sparse={}, Patience={}, DropoutRate={}'.format(*HYPERPARAMS))
     format_file_for_evaluation( input_fln='Josh/PracticeOutputs/detective_work.npy',
                                 output_fln=temp_processed_csv,
                                 isAllocCounties = False,
@@ -68,8 +69,8 @@ if __name__ == '__main__':
                             (0,10),         # number of days of mobility data to use as input
                             (1,10),         # number of days of death data to average over for target
                             [True,False],    # boolean to remove sparse data
-                            (1,10),         # patience of early stopping criteria on validation loss
-                            (.05,.9)       # dropout rate
+                            (1,30),         # patience of early stopping criteria on validation loss
+                            (.05,.5)       # dropout rate
                     ],   
                     # x0 = [.1,100,5,0,4.901,0.020,0.114],   
                     # y0 = [],
@@ -84,3 +85,9 @@ if __name__ == '__main__':
     print(res)
     fig = plot_convergence(res)
     fig.figure.savefig(r"Josh\Alloc_NN\NN_opt\NN_optimization_convergence.pdf")
+#%%
+    import pandas as pd
+    params='numDeaths, numCases, numMobility, lenOutput, remove_sparse, Patience, DropoutRate'.split(', ')
+    Results=pd.DataFrame(res.x_iters,columns=params)
+    Results['Loss']=res.func_vals
+    Results.to_csv(r'Josh\Alloc_NN\NN_opt\checkpoints.csv')
