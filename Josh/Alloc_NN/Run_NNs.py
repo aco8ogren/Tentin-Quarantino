@@ -20,8 +20,8 @@ from Alex.copy_of_evaluator import evaluate_predictions
 
 
 def test_error(params):
-    train_til = '2020 05 10'
-    test_from = '2020 05 11'
+    train_til = '2020-05-10'
+    test_from = '2020-05-11'
     test_til  = None
     temp_processed_csv = r'Josh\Alloc_NN\NN_opt\temp_NN_opt.csv'
     numDeaths, numCases, numMobility, lenOutput, remove_sparse, Patience, DropoutRate = params
@@ -47,19 +47,28 @@ def test_error(params):
     print('numDeaths={}, numCases={}, numMobility={}, lenOutput={}, remove_sparse={}, Patience={}, DropoutRate={}\nLoss: {}'.format(*params,score))
     return score
     
-ParamsList=[[2,2,2,5,True,4,.1],
-            [5,5,5,5,True,4,.1],
-            [2,2,2,2,True,4,.1],
-            [10,10,10,10,True,10,.1],
-            [10,0,0,10,True,10,.1],
-            [2,2,2,2,True,2,.3],
-            [5,5,5,5,False,4,.1]]
+ParamsList=[[2,2,2,6,True,5,.1],
+            [2,1,2,5,True,4,.1],
+            [2,1,2,6,True,5,.1],
+            [2,2,2,5,True,6,.1],
+            [2,2,2,7,False,4,.1]]
+
+# ParamsList=[[2,2,2,5,True,4,.1],
+#             [5,5,5,5,True,4,.1],
+#             [2,2,2,2,True,4,.1],
+#             [10,10,10,10,True,10,.1],
+#             [10,0,0,10,True,10,.1],
+#             [2,2,2,2,True,2,.3],
+#             [5,5,5,5,False,4,.1]]
+
+
+
 
 results=[]
 for i,params in enumerate(ParamsList):
-    print('\nRun {}/{}'.format(i,len(ParamsList))
+    print('\nRun {}/{}:'.format(i+1,len(ParamsList)))
     results.append(test_error(params))
 
 Results=pd.DataFrame(ParamsList,columns='numDeaths, numCases, numMobility, lenOutput, remove_sparse, Patience, DropoutRate'.split(', '))
 Results['loss']=results
-Results.to_csv(r'Josh\Alloc_NN\runs.csv')
+Results.to_csv(r'Josh\Alloc_NN\runs3.csv')

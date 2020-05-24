@@ -115,6 +115,7 @@ def Training(alloc_day,clust_fln,numDeaths=5,numCases=5,numMobility=5,lenOutput=
     Y=Y[inds]
     means=X.mean(0)
     stds=X.std(0)
+    stds[stds==0]=1
     X=(X-means)/stds
 
     np.savetxt(os.path.join(modelDir,'means.txt'),means)

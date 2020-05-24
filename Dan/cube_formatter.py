@@ -524,6 +524,7 @@ def alloc_NN(data,retrain=True,alloc_day=None,cluster_ref_fln=None,numDeaths=5,n
         Xpred=np.array(Xpred)
         means=np.loadtxt(os.path.join(modelDir,'means.txt'))
         stds=np.loadtxt(os.path.join(modelDir,'stds.txt'))
+        stds[stds==0]=1
         Xpred=(Xpred-means)/stds
         cnty_deaths=model.predict(Xpred).reshape((1,1,)+(len(Xpred),))
 
