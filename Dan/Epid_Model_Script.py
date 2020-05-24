@@ -51,7 +51,7 @@ if __name__ == '__main__':
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
         # OR: leave as None to train until the latest data for which there is data
-    train_til = '2020 05 10'
+    train_til = '2020-05-10'
     # Minimum deaths considered in training
         # Sets the first DAY which will be calculated as part of the optimization
         # by only including days with more than this many deaths. THIS IS DIFFERENT than 
@@ -177,7 +177,7 @@ if __name__ == '__main__':
     format_flnm_in = r'Josh\PracticeOutputs\Baseline_with_clusters.npy'
 
     #-- Provide filename for output file 
-    format_flnm_out = os.path.splitext(format_flnm_in)[0] + 'OptBest.csv'
+    format_flnm_out = os.path.splitext(format_flnm_in)[0] + '.csv'
 
 
 
@@ -222,7 +222,7 @@ if __name__ == '__main__':
     x0 = init_vec
     noise = 0.1**2
     random_state = 1234
-    HypParamVerbose = True
+    HypParamVerbose = True 
 
 # %% Prepare for calls
 
@@ -247,9 +247,14 @@ if __name__ == '__main__':
     if isAllocCounties and isAllocNN:
         raise ValueError("Only a single allocation method should be chosen (isAllocCounties or isAllocNN)")
 
-    # Get date and time to create unique folder
+    #-- Get date and time to create unique folder
     save_time = dt.now().strftime("m%m_d%d_h%Hm%Ms%S/")
 
+    #-- Set all dates to have hyphens to gaurantee correct behaviour
+    if train_til is not None: train_til = train_til.replace(' ','-')
+    if alloc_day is not None: alloc_day = alloc_day.replace(' ','-')
+    if eval_start_day is not None: eval_start_day = eval_start_day.replace(' ','-')
+    if eval_end_day is not None: eval_end_day = eval_end_day.replace(' ','-')
 # %% Define function that actually runs the code
 # Needed as a function for the optional hyperparameter optimization 
 
