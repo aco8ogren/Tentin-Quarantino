@@ -15,6 +15,10 @@ if __name__ == '__main__':
 
     sys.path.append(os.getcwd())
 
+    import warnings
+    warnings.simplefilter(action='ignore', category=FutureWarning)
+    warnings.simplefilter(action='ignore', category=DeprecationWarning)
+
     from Dan.EpidModel_parallelized_Counties import SEIIRQD_model
     from Alex.copy_of_evaluator import evaluate_predictions
     from Dan.format_sub import format_file_for_evaluation
@@ -25,7 +29,7 @@ if __name__ == '__main__':
     #-- Flag to choose whether to train the model
         # If this is true, the output file from this run will be used for
         # the remainder of the sections
-    isTrainModel = False
+    isTrainModel = True
 
     #-- Define control parameters
     # Flag to choose whether to save the results or not
@@ -50,7 +54,7 @@ if __name__ == '__main__':
     D_THRES = 62
 
     # Threshold of deaths below which will be automatically erfed (preventing them from being clustered)
-    ERF_THRES = 25
+    ERF_THRES = 20
 
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
@@ -73,7 +77,7 @@ if __name__ == '__main__':
         # When False, the code will run as it used to
     isCluster = True
 
-    cluster_max_radius = 2
+    cluster_max_radius = .5
 
 
     #-- Sub-select counties to train on
@@ -81,12 +85,7 @@ if __name__ == '__main__':
     isSubSelect = False
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
-    just_train_these_fips = [36061, 53033,39099,39095,9003,36027,8031,42101,36001,34039,6085,6073,6037,
-                            21131, 21051, 21193, 21119, 21109, 21189, 21025, 21071, 21115,
-                            21197, 21175, 21165, 21049, 21173, 21127, 21011, 21205, 21043,
-                            21181, 21069, 21019, 39087, 21089, 21135, 21161, 21023, 39145,
-                            39001, 39015, 39079, 39131, 39025, 39071, 39141, 39027, 39047,
-                            39129, 39057, 39113, 39045, 39097, 39023, 39109]
+    just_train_these_fips = [1097]
     
     #    21131, 21051, 21193, 21119, 21109, 21189, 21025, 21071, 21115,
     #    21197, 21175, 21165, 21049, 21173, 21127, 21011, 21205, 21043,
@@ -151,7 +150,7 @@ if __name__ == '__main__':
     #**** Define control parameters ****
     #-- Options for allocation using naive method
     # Flag to distribue state deaths amongst counties
-    isAllocCounties = False
+    isAllocCounties = True
     # Allocating using the mean number of num_alloc_days days BEFORE alloc_day
     num_alloc_days=5
     alloc_day=train_til
@@ -160,7 +159,7 @@ if __name__ == '__main__':
 
     #-- Options for allocation using Neural Net
     # Flag to distribute deaths with neural net
-    isAllocNN=True
+    isAllocNN=False
     # Number of days of death inputs
     numDeaths=10
     # Number of days of cases inputs
@@ -178,7 +177,7 @@ if __name__ == '__main__':
     # Flag to retrain neural net or just look for model in directory
     retrain=True
     # Directory to save or load model from
-    modelDir=r'Josh\Alloc_NN\ModelSaves\OptBest'
+    modelDir=r'Alex\temp\Best'
 
 
 

@@ -13,6 +13,10 @@ sys.path.append(os.getcwd())
 homedir = DIR
 datadir = f"{homedir}"
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action='ignore', category=DeprecationWarning)
+
 from skopt import gp_minimize
 from skopt.plots import plot_convergence
 from skopt import callbacks
@@ -37,6 +41,7 @@ def test_error(HYPERPARAMS,train_til,test_from,test_til):
     cluster_max_radius = HYPERPARAMS[8]
     train_Dfrom = HYPERPARAMS[9]
     min_train_days = HYPERPARAMS[10]
+    isAllocNN = HYPERPARAMS[11]
 
     print('======== CURRENT PARAMETERS BEING EVALUATED ========')
     print('p_err_frac =',p_err_frac)
@@ -44,12 +49,13 @@ def test_error(HYPERPARAMS,train_til,test_from,test_til):
     print('death_weight =',death_weight)
     print('alpha =',alpha)
     print('ERF_THRES =',ERF_THRES)
-    print('cluster_max_radius =',cluster_max_radius)
-    print('train_Dfrom =',train_Dfrom)
-    print('min_train_days =',min_train_days)
     print('init_vec[0] =',init_vec[0])
     print('init_vec[1] =',init_vec[1])
     print('init_vec[2] =',init_vec[2])
+    print('cluster_max_radius =',cluster_max_radius)
+    print('train_Dfrom =',train_Dfrom)
+    print('min_train_days =',min_train_days)
+    print('isAllocNN =',isAllocNN)
     print('====================================================')
 
     # if HYPERPARAMS[7] == 1:
@@ -71,22 +77,27 @@ def test_error(HYPERPARAMS,train_til,test_from,test_til):
         #             isConstInitCond=False,init_vec=HYPERPARAMS[4:],
         #             verbosity = 2,
         #             isCluster = isCluster)
+    
+    if isAllocNN:
+        isAllocCounties = False
+    else:      
+        isAllocCounties = True
 
     format_file_for_evaluation( temp_raw_mat,
                                 temp_processed_csv,
-                                isAllocCounties = False,
+                                isAllocCounties = isAllocCounties,
                                 isComputeDaily = True,
                                 alloc_day = train_til,
                                 num_alloc_days = 5,
-                                isAllocNN = True,
+                                isAllocNN = isAllocNN,
                                 retrain = True,
-                                numDeaths=10,
-                                numCases=0,
-                                numMobility=0,
-                                lenOutput=9,
+                                numDeaths=2,
+                                numCases=2,
+                                numMobility=2,
+                                lenOutput=6,
                                 remove_sparse=True,
-                                Patience=1,
-                                DropoutRate=.08,
+                                Patience=4,
+                                DropoutRate=.1,
                                 modelDir='Alex\\temp')
     
     # score = score_all_predictions('temp_processed.csv', date, model_date, mse=False, key='cases', bin_cutoffs=[20, 1000])
@@ -94,20 +105,21 @@ def test_error(HYPERPARAMS,train_til,test_from,test_til):
     return score
 
 def f(HYPERPARAMS):
-    train_til = '2020 05 08'
+    train_til = '2020-05-08'
     test_from = '2020-05-09'
     test_til  = None #'2020-05-05'
     if HYPERPARAMS[4] <= HYPERPARAMS[1]:
         return test_error(HYPERPARAMS,train_til,test_from,test_til)
     else:
-        return .18 # if HYPERPARAMS[4] <= HYPERPARAMS[1] does not hold, then return a reasonable yet high error. This means ERF_THRES > D_THRES.
+        return .21 # if HYPERPARAMS[4] <= HYPERPARAMS[1] does not hold, then return a reasonable yet high error. This means ERF_THRES > D_THRES.
 
 
 # %%
 if __name__ == '__main__':
     checkpoint_saver = CheckpointSaver("./checkpoint.pkl", compress=9) # keyword arguments will be passed to `skopt.dump`
     tic = time.time()
-    n_calls = 25
+    n_calls = 100
+    n_random_starts = 50
     res = gp_minimize(f,                  # the function to minimize
                                         # the bounds on each dimension of x
                     [
@@ -127,7 +139,7 @@ if __name__ == '__main__':
                     # y0 = [],
                     acq_func="EI",      # the acquisition function
                     n_calls=n_calls,          # the number of evaluations of f
-                    n_random_starts=10,  # the number of random initialization points
+                    n_random_starts=n_random_starts,  # the number of random initialization points
                     noise=0.1**2,       # the noise level (optional)
                     random_state=1234,  # the random seed
                     callback = [checkpoint_saver],
@@ -165,10 +177,11 @@ if __name__ == '__main__':
     print('init_vec[2] =',init_vec[2])
     print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 
-    params = 'param1, param2'.split(', ')
+    params = 'p_err_frac, D_THRES, death_weight, alpha, ERF_THRES, init_vec[0], init_vec[1], init_vec[2], cluster_max_radius, train_Dfrom, min_train_days'.split(', ')
     Results = pd.DataFrame(res.x_iters, columns = params)
-    Results['PB Loss']=res.func_vals
-    Results.to_csv('Alex\\bayesian_optimization_plots\\bayesian_optimization_record.csv')
+    Results['Loss']=res.func_vals
+    Results.to_csv('Alex\\bayesian_optimization_plots\\bayesian_optimization_record_snowflake.csv')
+    print(Results)
 
 #%%
 
