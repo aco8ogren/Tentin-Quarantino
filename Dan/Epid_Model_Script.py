@@ -65,11 +65,11 @@ if __name__ == '__main__':
         # by only including days with more than this many deaths. THIS IS DIFFERENT than 
         # D_THRES. D_THRES selects which counties are trained on and train_Dfrom selects 
         # which DAYS are used for the optimization
-    train_Dfrom = 15
+    train_Dfrom = 7
     # Minimum number of days required for a county to be trained on
         # After filtering using train_Dfrom and D_THRES, this makes sure that there
         # are at least min_train_days worth of days to train the model on (for fit_leastsqz)
-    min_train_days = 15
+    min_train_days = 5
 
 
     #-- Clustering settings
@@ -77,7 +77,7 @@ if __name__ == '__main__':
         # When False, the code will run as it used to
     isCluster = True
 
-    cluster_max_radius = .5
+    cluster_max_radius = 0
 
 
     #-- Sub-select counties to train on

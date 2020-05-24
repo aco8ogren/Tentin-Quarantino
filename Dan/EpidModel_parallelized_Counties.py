@@ -532,7 +532,7 @@ def apply_by_mp(func, workers, args):
 def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2,25),
                     isSaveRes = False,sv_flnm_np='',sv_flnm_mat = '',
                     isMultiProc = False,workers = 1,
-                    train_til = '2020 04 24',train_Dfrom = 7,min_train_days = 5,
+                    train_til = '2020-04-24',train_Dfrom = 7,min_train_days = 5,
                     isSubSelect = True,just_train_these_fips = [36061],
                     isPlotBokeh = False, isSaveMatplot = False, save_time = None, 
                     isConstInitCond = True, init_vec=(2, 0.85, 3),

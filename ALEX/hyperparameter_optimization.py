@@ -123,17 +123,18 @@ if __name__ == '__main__':
     res = gp_minimize(f,                  # the function to minimize
                                         # the bounds on each dimension of x
                     [
-                            (0,.1),        # p_err_frac: Parameter error estimate fraction (i.e. .05 --> 5% error)
+                            (0.0,.1),        # p_err_frac: Parameter error estimate fraction (i.e. .05 --> 5% error)
                             (30,1000),     # D_THRES: If a state does not have more than this number of deaths by train_til, we do not make predictions (or, we make cluster predictions)
                             (1,15),        # death_weight: factor by which to weigh error for death data more than symptomatic infected data during SEIIRQD optimization
                             (0,.5),        # alpha: the alpha from LeakyReLU determines how much to penalize the SEIIRQD objective function for over predicting the symptomatic infected
                             (0,1000),      # ERF_THRES
-                            (0.1,5),       # init_vec #1
-                            (.001,1),      # init_vec #2
-                            (.0001,10),    # init_vec #3
+                            (0.1,5.0),     # init_vec #1
+                            (.001,1.0),    # init_vec #2
+                            (.0001,10.0),  # init_vec #3
                             (0.0,4.0),     # cluster_max_radius
                             (1,20),        # train_Dfrom
-                            (5,15)         # min_train_days
+                            (5,15),        # min_train_days
+                            [True, False]        # isAllocNN (whether or not to use the Neural Network allocation)
                     ],   
                     # x0 = [.1,100,5,0,4.901,0.020,0.114],   
                     # y0 = [],
