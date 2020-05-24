@@ -52,6 +52,9 @@ def evaluate_predictions(csv_to_score,start_date, end_date=None,only_score_these
 
 
     # start_date = '2020-04-24' # First date to include in scoring
+    #-- Format start-day to have hyphens to ensure str comparison below is valid
+    start_date = start_date.replace(' ','-')
+
     daily_df = pd.read_csv('data/us/covid/nyt_us_counties_daily.csv') # Daily data processed from NYT.
 
     daily_df['fips'] = daily_df['fips'].astype(int)
@@ -59,6 +62,8 @@ def evaluate_predictions(csv_to_score,start_date, end_date=None,only_score_these
     # Set end_date as the last day with data when no end_date was provided
     if end_date is None:
         end_date = daily_df['date'].max()
+    else:
+        end_date = end_date.replace(' ','-')
     
     print('Evaluating until: %s'%end_date)
 
