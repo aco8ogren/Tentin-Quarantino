@@ -1,0 +1,6 @@
+,numDeaths,numCases,numMobility,lenOutput,remove_sparse,Patience,DropoutRate,loss
+0,2,2,2,6,True,5,0.1,0.17083381849673393
+1,2,1,2,5,True,4,0.1,0.17515938953759774
+2,2,1,2,6,True,5,0.1,0.17496815789219522
+3,2,2,2,5,True,6,0.1,0.17552734138826914
+4,2,2,2,7,False,4,0.1,0.18397223590466716
