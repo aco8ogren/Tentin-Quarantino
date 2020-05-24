@@ -51,10 +51,10 @@ if __name__ == '__main__':
     #-- Filtering parameters
     # Threshold of deaths at and below which a COUNTY will not be trained on
         # Filters which COUNTIES are looped over in optimization/minimization loop
-    D_THRES = 62
+    D_THRES = 25000
 
     # Threshold of deaths below which will be automatically erfed (preventing them from being clustered)
-    ERF_THRES = 20
+    ERF_THRES = 25000
 
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
@@ -65,7 +65,7 @@ if __name__ == '__main__':
         # by only including days with more than this many deaths. THIS IS DIFFERENT than 
         # D_THRES. D_THRES selects which counties are trained on and train_Dfrom selects 
         # which DAYS are used for the optimization
-    train_Dfrom = 7
+    train_Dfrom = 2 # 7
     # Minimum number of days required for a county to be trained on
         # After filtering using train_Dfrom and D_THRES, this makes sure that there
         # are at least min_train_days worth of days to train the model on (for fit_leastsqz)
@@ -77,7 +77,7 @@ if __name__ == '__main__':
         # When False, the code will run as it used to
     isCluster = True
 
-    cluster_max_radius = 0
+    cluster_max_radius = 1
 
 
     #-- Sub-select counties to train on
@@ -85,13 +85,7 @@ if __name__ == '__main__':
     isSubSelect = False
     # List of counties which should be considered
         # NOTE: This just removes ALL other counties from the df as soon as it can
-    just_train_these_fips = [1097]
-    
-    #    21131, 21051, 21193, 21119, 21109, 21189, 21025, 21071, 21115,
-    #    21197, 21175, 21165, 21049, 21173, 21127, 21011, 21205, 21043,
-    #    21181, 21069, 21019, 39087, 21089, 21135, 21161, 21023, 39145,
-    #    39001, 39015, 39079, 39131, 39025, 39071, 39141, 39027, 39047,
-    #    39129, 39057, 39113, 39045, 39097, 39023, 39109]
+    just_train_these_fips = [8001]
        #35006, 35043, 35031]
         # GOOD 6037,17031, TROUBLE 53061,36059,53033  NOT SURE 36087
     #[36061, 36059, 26163, 17031, 36103, 36119, 34013, 34003, 6037,  9001,  34017, 26125, 25017, 34039, 26099, 9003] 
@@ -134,13 +128,13 @@ if __name__ == '__main__':
     verbosity = 3
     #-- (LEAST_SQUARES FUNCTION) Verbosity explanation:
     # The verbosity levels are the same as the scipy.optimize.least_squares defines
-    least_squares_verbosity = 0
+    least_squares_verbosity = 2
 
 
     #-- Set hyperparameters
-    p_err_frac = 0.09   # The size of the uncertainty that we have on our optimal SEIIRQD parameters. This affects the size of our quantile differences.
-    death_weight = 8   # The weight with which we multiply the death error in SEIIRQD optimization. The death data is trusted death_weight times more than the symptomatic infected data.
-    alpha = 0         # alpha of the LeakyReLU for modifying the symptomatic infected error. i.e. if alpha = 0 ==> no penalty for overestimating Sympt Inf. alpha = 1 ==> as much penalty for overestimating as underestimating.
+    p_err_frac = 0.09854836381340173 # 0.09   # The size of the uncertainty that we have on our optimal SEIIRQD parameters. This affects the size of our quantile differences.
+    death_weight = 14 # 8   # The weight with which we multiply the death error in SEIIRQD optimization. The death data is trusted death_weight times more than the symptomatic infected data.
+    alpha = 0.47274210758033575 # 0         # alpha of the LeakyReLU for modifying the symptomatic infected error. i.e. if alpha = 0 ==> no penalty for overestimating Sympt Inf. alpha = 1 ==> as much penalty for overestimating as underestimating.
 
 # %% Setup Formatter run
 

@@ -66,7 +66,7 @@ def test_error(HYPERPARAMS,train_til,test_from,test_til):
                     train_til = train_til,train_Dfrom = train_Dfrom,min_train_days = min_train_days,
                     isSubSelect = False,just_train_these_fips = None,
                     isPlotBokeh = False, isSaveMatplot = False, save_time = None, 
-                    isConstInitCond = False, init_vec=init_vec,
+                    isConstInitCond = True, init_vec=init_vec, # TURN IS INIT COND TO FALSE AT SOME POINT!!!!!!!!!!!!!!!!!!!!
                     verbosity = 2, least_squares_verbosity = 0,
                     isCluster=True, cluster_max_radius = cluster_max_radius)
         
@@ -118,23 +118,23 @@ def f(HYPERPARAMS):
 if __name__ == '__main__':
     checkpoint_saver = CheckpointSaver("./checkpoint.pkl", compress=9) # keyword arguments will be passed to `skopt.dump`
     tic = time.time()
-    n_calls = 100
-    n_random_starts = 50
+    n_calls = 25
+    n_random_starts = 10
     res = gp_minimize(f,                  # the function to minimize
                                         # the bounds on each dimension of x
                     [
-                            (0.0,.1),        # p_err_frac: Parameter error estimate fraction (i.e. .05 --> 5% error)
-                            (30,1000),     # D_THRES: If a state does not have more than this number of deaths by train_til, we do not make predictions (or, we make cluster predictions)
-                            (1,15),        # death_weight: factor by which to weigh error for death data more than symptomatic infected data during SEIIRQD optimization
-                            (0,.5),        # alpha: the alpha from LeakyReLU determines how much to penalize the SEIIRQD objective function for over predicting the symptomatic infected
-                            (0,1000),      # ERF_THRES
-                            (0.1,5.0),     # init_vec #1
-                            (.001,1.0),    # init_vec #2
-                            (.0001,10.0),  # init_vec #3
-                            (0.0,4.0),     # cluster_max_radius
-                            (1,20),        # train_Dfrom
-                            (5,15),        # min_train_days
-                            [True, False]        # isAllocNN (whether or not to use the Neural Network allocation)
+                            (0.0, 0.1),      # p_err_frac: Parameter error estimate fraction (i.e. .05 --> 5% error)
+                            (30, 500),     # D_THRES: If a state does not have more than this number of deaths by train_til, we do not make predictions (or, we make cluster predictions)
+                            (1, 15),        # death_weight: factor by which to weigh error for death data more than symptomatic infected data during SEIIRQD optimization
+                            (0, 0.5),        # alpha: the alpha from LeakyReLU determines how much to penalize the SEIIRQD objective function for over predicting the symptomatic infected
+                            [0],      # ERF_THRES
+                            [.1], # (0.1,5.0),     # init_vec #1
+                            [.001], # (.001,1.0),    # init_vec #2
+                            [.0001], # (.0001,10.0),  # init_vec #3
+                            (0.0, 2.0),     # cluster_max_radius
+                            (1, 10),        # train_Dfrom
+                            [5],        # min_train_days
+                            [False]  # isAllocNN (whether or not to use the Neural Network allocation)
                     ],   
                     # x0 = [.1,100,5,0,4.901,0.020,0.114],   
                     # y0 = [],

@@ -86,8 +86,8 @@ def is_number(s):
 def tau(t):
     return 0
 
-# def seiirq(dat, t, params, N, max_t, offset,processed_mobility_data):
-def seiirq(dat, t, params, N, max_t, processed_mobility_data):
+def seiirq(dat, t, params, N, max_t, offset,processed_mobility_data, mobility_df):
+# def seiirq(dat, t, params, N, max_t, processed_mobility_data):
     if t >= max_t:
         return [0]*6
     beta = params[0]
@@ -107,18 +107,18 @@ def seiirq(dat, t, params, N, max_t, processed_mobility_data):
     # TODO: What's the point of tau if it just returns 0? Is this something we should update?
     # Qind = (q(t + offset, N, shift,mobility_data,offset) - tau(t + offset)*i_a)/(s + e + i_a - tau(t + offset)*i_a)
     # Qind = q(t + offset, N, shift,mobility_data,offset)/(s + e + i_a)
-    Qind = 1 
+    # Qind_compare = q(t + offset, N, shift,mobility_df,offset)/(s + e + i_a)
+    Qind = 0 
 
     # timescale = 75
     # moving = np.exp(-(t-offset)/timescale)
     # Q = N*(1-moving-shift)
-    # try:
-    t_mov = np.minimum(t,np.shape(processed_mobility_data)[1] - 1)
-    pmd = processed_mobility_data[1,int(np.round(t_mov))]
-    Qind = (1 - pmd - shift)
-    Qind = np.maximum(Qind,0)*N/(s + e + i_a)
-    # except:
-    #     print('hi')
+
+    # t_mov = np.minimum(t,np.shape(processed_mobility_data)[1] - 1)
+    # pmd = processed_mobility_data[1,int(np.round(t_mov))]
+    # Qind = (1 - pmd - shift)
+    # Qind = np.maximum(Qind,0)*N/(s + e + i_a)
+
         
 
     # Qia = Qind + (1-Qind)*tau(t + offset)
@@ -148,7 +148,7 @@ def mse(A, B):
     Bp[B == np.inf] = 0
     return mean_squared_error(Ap, Bp)
 
-def model_z(params, data,processed_mobility_data, tmax=-1):
+def model_z(params, data,processed_mobility_data, mobility_df, tmax=-1):
     # initial conditions
     N = data['Population'].values[0] # total population
     initial_conditions = N * np.array(params[-4:]) # the parameters are a fraction of the population so multiply by the population
@@ -161,7 +161,7 @@ def model_z(params, data,processed_mobility_data, tmax=-1):
     d0 = data['deaths'].values[0]
     s0 = N - np.sum(initial_conditions) - d0
 
-    # offset = data['date_processed'].min()
+    offset = data['date_processed'].min()
     yz_0 = np.array([s0, e0, ia0, is0, r0, d0])
     
     n = len(data)
@@ -169,8 +169,8 @@ def model_z(params, data,processed_mobility_data, tmax=-1):
         n = int(np.round(tmax))
     
     # Package parameters into a tuple
-    # args = (params, N, n, offset,processed_mobility_data)
-    args = (params, N, n,processed_mobility_data)
+    args = (params, N, n, offset,processed_mobility_data, mobility_df)
+    # args = (params, N, n,processed_mobility_data)
     
     # Integrate ODEs
     try:
@@ -182,10 +182,10 @@ def model_z(params, data,processed_mobility_data, tmax=-1):
 
     return s
 
-def fit_leastsq_z(params, data, processed_mobility_data,HYPERPARAMS):
+def fit_leastsq_z(params, data, processed_mobility_data, mobility_df, HYPERPARAMS):
     Ddata = (data['deaths'].values)
     Idata = (data['cases'].values)
-    s = model_z(params, data, processed_mobility_data)
+    s = model_z(params, data, processed_mobility_data, mobility_df)
 
     # S = s[:,0]
     # E = s[:,1]
@@ -431,7 +431,7 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
             tic = time.time()
             res = least_squares(fit_leastsq_z, 
                                 guesses, 
-                                args=(data,processed_mobility_data, HYPERPARAMS), 
+                                args=(data,processed_mobility_data, mobility_data, HYPERPARAMS), 
                                 bounds=np.transpose(np.array(const['ranges'])),
                                 jac = '2-point',
                                 verbose = const['least_squares_verbosity'],
@@ -486,7 +486,7 @@ def erf_par_fun(fips_in_core, erf_df, coreInd, const, ErrFlag):
         
         #-- Train the model
         tic = time.time()
-        erf_cube = copy_of_erf_model.predict_counties(erf_df, fips_in_core,
+        erf_cube = copy_of_erf_model.predict_counties(erf_df, fips_in_core, const,
                                                                 last_date_pred='2020-06-30', 
                                                                 out_file='erf_model_predictions.csv', 
                                                                 boundary_date=const['train_til_for_erf'],
@@ -539,7 +539,6 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2,25),
                     verbosity = 3, least_squares_verbosity = 0,
                     isCluster=False, cluster_max_radius = 2):
                     
-
     tic0 = time.time()
     
     #-- Verbosity explanation:
@@ -848,7 +847,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2,25),
 
     else:
         clusteringDF = None
-        list_of_fips_to_erf = list_of_low_death_fips
+        list_of_fips_to_erf = list_of_fips_to_erf + list_of_low_death_fips
     
     df= df[~df.fips.isin(list_of_fips_to_erf)]
 
@@ -1006,7 +1005,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2,25),
             erf_cube = apply_by_mp(erf_par_fun,workers,args)
         else:
             # Call parfun directly
-            erf_cube = copy_of_erf_model.predict_counties(*(args[0]))
+            erf_cube = erf_par_fun(*(args[0]))
         toc_erf = time.time()
         print('Fitting erf done. Time elapsed', np.round(toc_erf-tic_erf,2),'sec')
     else:
