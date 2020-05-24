@@ -1,9 +1,14 @@
 # %%
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action='ignore', category=DeprecationWarning)
+
 from IPython import get_ipython
 import pandas as pd
 import numpy as np
 import scipy.integrate
 import matplotlib.pyplot as plt
+
 
 # import bokeh.io
 # import bokeh.application
@@ -52,20 +57,24 @@ def q(t, N, shift,mobility_data,offset):
         moving_list = [mobility_data[col].values for col in list(mobility_data.columns) if is_number(col) and col>=offset]
         moving = np.squeeze(np.array(moving_list))/100 
         if len(moving_list)==0:
-            moving = (100 - 5*(t-offset))/100
+            # moving = (100 - 5*(t-offset))/100
+            timescale = 75
+            moving = np.exp(-(t-offset)/timescale)
     else:
-        moving = (100 - 5*(t-offset))/100
+        # moving = (100 - 5*(t-offset))/100
+        timescale = 75
+        moving = np.exp(-(t-offset)/timescale)
         
     Q = N*(1-moving-shift)
     try:
         if np.round(t) >= len(Q):
             if len(Q)>0:
-                return Q[-1]
+                return np.maximum(Q[-1],0)
     except TypeError:
         # print('ERROR in q(): Q was a scalar you poop')
-        return Q
+        return np.maximum(Q,0)
 
-    return Q[int(np.round(t))]
+    return np.maximum(Q[int(np.round(t))],0)
 
 def is_number(s):
     try:
@@ -77,7 +86,8 @@ def is_number(s):
 def tau(t):
     return 0
 
-def seiirq(dat, t, params, N, max_t, offset,mobility_data):
+def seiirq(dat, t, params, N, max_t, offset,processed_mobility_data, mobility_df):
+# def seiirq(dat, t, params, N, max_t, processed_mobility_data):
     if t >= max_t:
         return [0]*6
     beta = params[0]
@@ -95,11 +105,28 @@ def seiirq(dat, t, params, N, max_t, offset,mobility_data):
     i_s = dat[3]
 
     # TODO: What's the point of tau if it just returns 0? Is this something we should update?
-    Qind = (q(t + offset, N, shift,mobility_data,offset) - tau(t + offset)*i_a)/(s + e + i_a - tau(t + offset)*i_a)
-    Qia = Qind + (1-Qind)*tau(t + offset)
+    # Qind = (q(t + offset, N, shift,mobility_data,offset) - tau(t + offset)*i_a)/(s + e + i_a - tau(t + offset)*i_a)
+    # Qind = q(t + offset, N, shift,mobility_data,offset)/(s + e + i_a)
+    # Qind_compare = q(t + offset, N, shift,mobility_df,offset)/(s + e + i_a)
+    Qind = 0 
+
+    # timescale = 75
+    # moving = np.exp(-(t-offset)/timescale)
+    # Q = N*(1-moving-shift)
+
+    # t_mov = np.minimum(t,np.shape(processed_mobility_data)[1] - 1)
+    # pmd = processed_mobility_data[1,int(np.round(t_mov))]
+    # Qind = (1 - pmd - shift)
+    # Qind = np.maximum(Qind,0)*N/(s + e + i_a)
+
+        
+
+    # Qia = Qind + (1-Qind)*tau(t + offset)
+    Qia = Qind
     
     dsdt = - beta * s * i_a * (1 - Qind) * (1 - Qia) / N
-    dedt = beta * s * i_a* (1 - Qind) * (1 - Qia) / N  - alpha * e
+    # dedt = beta * s * i_a* (1 - Qind) * (1 - Qia) / N  - alpha * e
+    dedt = dsdt  - alpha * e
     diadt = alpha * e - (sigma + ra) * i_a
     disdt = sigma * i_a - (delta + rs) * i_s
     dddt = delta * i_s
@@ -121,7 +148,7 @@ def mse(A, B):
     Bp[B == np.inf] = 0
     return mean_squared_error(Ap, Bp)
 
-def model_z(params, data,mobility_data, tmax=-1):
+def model_z(params, data,processed_mobility_data, mobility_df, tmax=-1):
     # initial conditions
     N = data['Population'].values[0] # total population
     initial_conditions = N * np.array(params[-4:]) # the parameters are a fraction of the population so multiply by the population
@@ -142,11 +169,12 @@ def model_z(params, data,mobility_data, tmax=-1):
         n = int(np.round(tmax))
     
     # Package parameters into a tuple
-    args = (params, N, n, offset,mobility_data)
+    args = (params, N, n, offset,processed_mobility_data, mobility_df)
+    # args = (params, N, n,processed_mobility_data)
     
     # Integrate ODEs
     try:
-        s = scipy.integrate.odeint(seiirq, yz_0, np.arange(0, n), args=args)
+        s,deb = scipy.integrate.odeint(seiirq, yz_0, np.arange(0, n), args=args,full_output = 1)
     except RuntimeError:
         s = scipy.integrate.odeint(seiirq, yz_0, np.arange(0, n), args=args)
 #         print('RuntimeError', params)
@@ -154,10 +182,10 @@ def model_z(params, data,mobility_data, tmax=-1):
 
     return s
 
-def fit_leastsq_z(params, data, mobility_data,HYPERPARAMS):
+def fit_leastsq_z(params, data, processed_mobility_data, mobility_df, HYPERPARAMS):
     Ddata = (data['deaths'].values)
     Idata = (data['cases'].values)
-    s = model_z(params, data, mobility_data)
+    s = model_z(params, data, processed_mobility_data, mobility_df)
 
     # S = s[:,0]
     # E = s[:,1]
@@ -189,9 +217,10 @@ def LeakyReLU(pred,true,alpha=0):
     return np.array(result)
 
 # %%
-def plot_with_errors_sample_z(res, df, mobility_df, region, d_thres, const, HYPERPARAMS, extrapolate=1, boundary=None, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True):
+# def plot_with_errors_sample_z(res, df, mobility_df, region, d_thres, const, HYPERPARAMS, extrapolate=1, boundary=None, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True):
+def plot_with_errors_sample_z(res, df, processed_mobility_data, region, d_thres, const, HYPERPARAMS, extrapolate=1, boundary=None, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True):
     data = select_region(df, region, min_deaths=d_thres)
-    mobility_data = select_region(mobility_df,region, min_deaths=d_thres, mobility = True)
+    # mobility_data = select_region(mobility_df,region, min_deaths=d_thres, mobility = True)
     p_err_frac = HYPERPARAMS[0]
     errors = res.x*p_err_frac # ALEX --> the parameter error is simply 5% of the parameter. i.e. we know the parameter to within +or- 5%.
     
@@ -199,12 +228,12 @@ def plot_with_errors_sample_z(res, df, mobility_df, region, d_thres, const, HYPE
     samples = 100
     for i in range(samples):
         sample = np.random.normal(loc=res.x, scale=errors)
-        s = model_z(sample, data, mobility_data, len(data)*extrapolate)
+        s = model_z(sample, data, processed_mobility_data, len(data)*extrapolate)
         all_s.append(s)
         
     all_s = np.array(all_s)
     
-    s = model_z(res.x, data,mobility_data, len(data)*extrapolate)
+    s = model_z(res.x, data, processed_mobility_data, len(data)*extrapolate)
     S = s[:,0]
     E = s[:,1]
     I_A = s[:,2]
@@ -389,17 +418,27 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
                 guesses = const['guesses'] + initial_conditions.tolist()
 
             #-- Train the model
+            offset = data['date_processed'].min()
+            time_list = [col for col in list(mobility_data.columns) if is_number(col) and col>=offset]
+            moving_list = [mobility_data[col].values for col in list(mobility_data.columns) if is_number(col) and col>=offset]
+            moving = np.squeeze(np.array(moving_list))/100
+            if np.shape(moving_list)[1] == 0:
+                timelength = np.max(time_list)-np.min(time_list)
+                timescale = timelength/3
+                t = np.arange(0,timelength)
+                moving = np.exp(-t/timescale)
+            processed_mobility_data = np.array([time_list, moving])
             tic = time.time()
             res = least_squares(fit_leastsq_z, 
                                 guesses, 
-                                args=(data,mobility_data, HYPERPARAMS), 
+                                args=(data,processed_mobility_data, mobility_data, HYPERPARAMS), 
                                 bounds=np.transpose(np.array(const['ranges'])),
                                 jac = '2-point',
                                 verbose = const['least_squares_verbosity'],
                                 ftol = 1e-4,
                                 max_nfev= 200)
-            # plot_with_errors_sample_z(res, const['params'], initial_conditions, main_df, mobility_df, state, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True);
-            all_s, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['train_Dfrom'], const, HYPERPARAMS, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
+            #all_s, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['train_Dfrom'], const, HYPERPARAMS, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
+            all_s, _, _ = plot_with_errors_sample_z(res, main_df, processed_mobility_data, fips, const['train_Dfrom'], const, HYPERPARAMS, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
             toc = time.time()
             cube[0,:,ind] = fips
             # CONSIDER changing this to the first day when train_Dfrom was crossed
@@ -430,6 +469,54 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
               '############################\n')
     return cube
 
+# %%
+#-- Create function to be parallelized (to be performed on each core)
+def erf_par_fun(fips_in_core, erf_df, coreInd, const, ErrFlag):
+    # erf_cube = np.zeros((100+1,const['num_days'],len(fips_in_core)))
+    from Alex import copy_of_erf_model
+    from benchmark_models import utils
+    try:
+        # Check if ErrFlag is valuable (ie if multiprocessing) THEN check if it's set
+            # "and" is short circuited so ErrFlag.is_set() only gets called when needed
+        if (ErrFlag is not None) and ErrFlag.is_set():
+            print('Detected ErrFlag in ERF loop, but Alex didnt prepare for this. Continuing with loop...')
+            # print('Detected ErrFlag; exiting loop')
+            # break
+        
+        
+        #-- Train the model
+        tic = time.time()
+        erf_cube = copy_of_erf_model.predict_counties(erf_df, fips_in_core, const,
+                                                                last_date_pred='2020-06-30', 
+                                                                out_file='erf_model_predictions.csv', 
+                                                                boundary_date=const['train_til_for_erf'],
+                                                                key='deaths',
+                                                                verbose = const['erf_verbosity'])
+        toc = time.time()
+
+        # if const['verbosity'] >= 3:
+        #     print('____%d (county %d of %d)____\n'%(fips, ind+1, len(fips_in_core)) + \
+        #         '    core: %d\n'%coreInd + \
+        #         '    time: %f \n'%(toc-tic))
+        # sys.stdout.flush()
+    except:
+        print('############################\n' + \
+                'UNHANDLED Exception Occurred:\n' + \
+                'core index: %d \n'%(coreInd) + \
+                # '   issue on: (%d) - %s - %s\n'%(fips, const['fips_to_county'][fips],const['fips_to_state'][fips]) + \
+                'Setting ErrFlag for other workers\n' + \
+                '############################\n')
+        if ErrFlag is not None:
+            # Only set ErrFlag when there are other workers listening
+            ErrFlag.set()
+        raise
+    # do non-risky stuff outside of try context
+    if const['verbosity'] >= 3:
+        print('############################\n' + \
+              '### Core %2d has finished ###\n'%coreInd + \
+              '############################\n')
+    return erf_cube
+
 def apply_by_mp(func, workers, args):
     # pool = multiprocessing.Pool(processes=workers)
     # result = pool.map(func, args)
@@ -442,17 +529,16 @@ def apply_by_mp(func, workers, args):
     
     
 # %% MAIN SCRIPT
-def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
+def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2,25),
                     isSaveRes = False,sv_flnm_np='',sv_flnm_mat = '',
                     isMultiProc = False,workers = 1,
-                    train_til = '2020 04 24',train_Dfrom = 7,min_train_days = 5,
+                    train_til = '2020-04-24',train_Dfrom = 7,min_train_days = 5,
                     isSubSelect = True,just_train_these_fips = [36061],
                     isPlotBokeh = False, isSaveMatplot = False, save_time = None, 
                     isConstInitCond = True, init_vec=(2, 0.85, 3),
                     verbosity = 3, least_squares_verbosity = 0,
                     isCluster=False, cluster_max_radius = 2):
                     
-
     tic0 = time.time()
     
     #-- Verbosity explanation:
@@ -479,6 +565,9 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     # Threshold of deaths at and below which a COUNTY will not be trained on
         # Filters which COUNTIES are looped over in optimization/minimization loop
     D_THRES = HYPERPARAMS[1]
+
+    # Threshold of deaths below which will be automatically erfed (preventing them from being clustered)
+    ERF_THRES = HYPERPARAMS[4]
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
         # OR: leave as None to train until the latest data for which there is data
@@ -689,8 +778,12 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     # Find counties with enough deaths to be trained on ( >= D_THRES)
     list_of_fips_to_train = list(fips_to_maxdeaths[fips_to_maxdeaths >= D_THRES].index)
 
-    # Find counties with too few deaths to be trained on ( < D_THRES)
-    list_of_low_death_fips = list(fips_to_maxdeaths[fips_to_maxdeaths < D_THRES].index)
+    # Find counties with too few deaths to be trained on ( < D_THRES) AND ( > ERF_THRES)
+    list_of_low_death_fips_D_THRES = list(fips_to_maxdeaths[fips_to_maxdeaths < D_THRES].index)
+
+    list_of_low_death_fips = list(np.intersect1d(list(fips_to_maxdeaths[fips_to_maxdeaths >= ERF_THRES].index), list_of_low_death_fips_D_THRES))
+    
+    list_of_fips_to_erf = list(np.setdiff1d(list_of_low_death_fips_D_THRES,list_of_low_death_fips))
     
     # Cluster low deaths counties
     if isCluster and len(list_of_low_death_fips)>0:
@@ -706,7 +799,9 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         # Generate dataframe (clusteringDF) of clusters with at least D_THRES deaths ON clusterDate (train_til). This dataframe
             # relates each county to its cluster number, along with some 
             # additional data such as deaths on train_till for the counties and clusters 
-        clusteringDF,list_of_fips_to_erf=JMC(list_of_low_death_fips,clusterDate,D_THRES,Fpath=sv_clust_flnm,cluster_radius = cluster_max_radius)
+        clusteringDF,additional_fips_to_erf=JMC(list_of_low_death_fips,clusterDate,D_THRES,Fpath=sv_clust_flnm,cluster_radius = cluster_max_radius)
+        if len(additional_fips_to_erf > 0):
+            list_of_fips_to_erf = list_of_fips_to_erf + list(additional_fips_to_erf)
         # get list of all counties that were successfully clustered (without regard to deaths in cluster)
         list_of_clustered_fips=clusteringDF.fips.unique()
 
@@ -751,34 +846,21 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
         fips_to_maxdeaths = df.groupby('fips')['deaths'].max()
 
     else:
-        list_of_fips_to_erf = list_of_low_death_fips
+        clusteringDF = None
+        list_of_fips_to_erf = list_of_fips_to_erf + list_of_low_death_fips
     
     df= df[~df.fips.isin(list_of_fips_to_erf)]
 
-    # %% 
-    # Perform ERF on remaining FIPS
-    if len(list_of_fips_to_erf) > 0:
-        #list_of_fips_to_erf = [36061] #[8073,8053,8063,8101,8111,8117]
-        from Alex import copy_of_erf_model
-        from benchmark_models import utils
-
-        erf_df = utils.get_processed_df()
-        tic_erf = time.time()
-        erf_cube = copy_of_erf_model.predict_counties(erf_df, list_of_fips_to_erf,
-                                                                    last_date_pred='2020-06-30', 
-                                                                    out_file='erf_model_predictions.csv', 
-                                                                    boundary_date=train_til_for_erf,
-                                                                    key='deaths',
-                                                                    verbose = True)
-        toc_erf = time.time()
-        print('Fitting erf done. Time elapsed', np.round(toc_erf-tic_erf,2),'sec')
-    else:
-        erf_cube = None
-
-        
-        
-        
-
+    if verbosity >= 2:
+        print('============================================')
+        if clusteringDF is not None:
+            print('Clustering',len(list_of_clustered_fips),'counties')
+            print('into',len(np.unique(clusteringDF['cluster'].values)),'clusters')
+        else:
+            print('Clustering',0,'counties')
+            print('into',0,'clusters')
+        print('============================================')
+              
     # %%
 
     #-- Print name of counties to be trained on
@@ -821,32 +903,7 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     # Get number of days with >= D_THRES deaths 
         # (as pandas series)
     fips_to_daysofdata = df[df['deaths'] >= train_Dfrom].groupby('fips').size()
-
-
-    # -%% 
-    # Prepare for parallelization
-    
-    
-
-    if isMultiProc:
-        # Check that user hasn't requested more cores than are available
-        if workers > multiprocessing.cpu_count():
-            raise ValueError('More workers requested than cores: workers=%d, cores=%d'%(workers, multiprocessing.cpu_count()))
-    else:
-        # Set number of workers to 1 since not multiprocessing
-        workers = 1
-
-    if verbosity >= 2:
-        print('Using %d cores'%workers)
-
-    #-- Split into parallelizable chunks
-        # Here I am splitting arbitrarily. Could consider ordering by number of days of data and then splitting s.t. we evenly 
-        # distribute the work among the cores. This'll reduce net runtime since no core will be running longer than the others
-    fips_for_cores = np.array_split(list_of_fips_to_train,workers)
-    # Split the dataframes by core allocations
-    main_dfs = [df[df.fips.isin(fips_in_core)] for fips_in_core in fips_for_cores]
-    mobility_dfs = [mobility_df[mobility_df.fips.isin(fips_in_core)] for fips_in_core in fips_for_cores]
-
+    # %%
     #-- Simplify arguments for function by placing them in a dict
     param_ranges = [(1.0, 3.0), (0.1, 0.5), (0.01, .9), (0.0001, 0.9), (0.0001, 0.9), (0.001, 0.1), (0.05, .7)]
     initial_ranges = [(1.0e-7, 0.05), (1.0e-7, 0.05), (1.0e-7, 0.05), (1.0e-7, 0.01)]
@@ -885,11 +942,107 @@ def SEIIRQD_model(HYPERPARAMS = (.05,50,10,.2),
     const['isConstInitCond'] = isConstInitCond
     const['verbosity'] = verbosity
     const['least_squares_verbosity'] = least_squares_verbosity
+
     # Explanation for these next to vars is in par_fun
     const['init_T'] = init_vec[0]         # scaling factor for total number of cases relative to reported
     const['init_R'] = init_vec[1]      # Fraction of total infected that are asymptomatic
     const['init_F'] = init_vec[2]         # Fudge factor for how many exposed relative to number of symptomatic 
+    # %% 
+    # ERF
+    if len(list_of_fips_to_erf) > 0:
+        from Alex import copy_of_erf_model
+        from benchmark_models import utils
+        if verbosity >= 3:
+            if isMultiProc:
+                erf_verbosity = False
+            else:
+                erf_verbosity = True
+        else:   
+            erf_verbosity = False
+        
+        if verbosity >= 2:
+            print('============================================')
+            print('Erfing',len(list_of_fips_to_erf),'counties.')
+            print('============================================')
 
+        erf_df = utils.get_processed_df()
+        tic_erf = time.time()
+
+        const['erf_verbosity'] = erf_verbosity
+        const['train_til_for_erf'] = train_til_for_erf
+        # ERF : Prepare for parallelization
+        if isMultiProc:
+            # Check that user hasn't requested more cores than are available
+            if workers > multiprocessing.cpu_count():
+                raise ValueError('More workers requested than cores: workers=%d, cores=%d'%(workers, multiprocessing.cpu_count()))
+        else:
+            # Set number of workers to 1 since not multiprocessing
+            workers = 1
+
+        if verbosity >= 2:
+            print('Using %d cores'%workers)
+
+        #-- Split into parallelizable chunks
+            # Here I am splitting arbitrarily. Could consider ordering by number of days of data and then splitting s.t. we evenly 
+            # distribute the work among the cores. This'll reduce net runtime since no core will be running longer than the others
+        erf_fips_for_cores = np.array_split(list_of_fips_to_erf,workers)
+
+        # Split the dataframes by core allocations
+        erf_main_dfs = [erf_df[erf_df.fips.isin(fips_in_core)] for fips_in_core in erf_fips_for_cores]
+
+            # -%% 
+        #-- Call to run in parallel
+        if isMultiProc:
+            # Flag to manage exceptions from other cores
+            ErrFlag = multiprocessing.Manager().Event()
+        else:
+            # Set ErrFlag to None since don't want any multiprocessing stuff
+            ErrFlag = None
+        # Format arguments
+        args = [(erf_fips_for_cores[i], erf_main_dfs[i], i, const, ErrFlag) for i in range(workers)]
+        if isMultiProc:
+            # Call parallelizer function
+            erf_cube = apply_by_mp(erf_par_fun,workers,args)
+        else:
+            # Call parfun directly
+            erf_cube = erf_par_fun(*(args[0]))
+        toc_erf = time.time()
+        print('Fitting erf done. Time elapsed', np.round(toc_erf-tic_erf,2),'sec')
+    else:
+        erf_cube = None 
+    # %% 
+    # SEIIRQD : Prepare for parallelization
+    if isMultiProc:
+        # Check that user hasn't requested more cores than are available
+        if workers > multiprocessing.cpu_count():
+            raise ValueError('More workers requested than cores: workers=%d, cores=%d'%(workers, multiprocessing.cpu_count()))
+    else:
+        # Set number of workers to 1 since not multiprocessing
+        workers = 1
+
+    if verbosity >= 2:
+        print('Using %d cores'%workers)
+
+    #-- Split into parallelizable chunks
+        # Here I am splitting arbitrarily. Could consider ordering by number of days of data and then splitting s.t. we evenly 
+        # distribute the work among the cores. This'll reduce net runtime since no core will be running longer than the others
+    fips_for_cores = []
+    rem_workers = workers
+    slow_fips = []
+    if len(slow_fips) > 0:
+        slow_fips_to_train = list(np.intersect1d(slow_fips,list_of_fips_to_train))
+        if workers > len(slow_fips_to_train):
+            for fips in slow_fips:
+                if fips in list_of_fips_to_train:
+                    list_of_fips_to_train.remove(fips)
+                    fips_for_cores.append(np.array([fips]))
+                    rem_workers = rem_workers - 1
+
+    fips_for_cores = fips_for_cores + np.array_split(list_of_fips_to_train,rem_workers)
+
+    # Split the dataframes by core allocations
+    main_dfs = [df[df.fips.isin(fips_in_core)] for fips_in_core in fips_for_cores]
+    mobility_dfs = [mobility_df[mobility_df.fips.isin(fips_in_core)] for fips_in_core in fips_for_cores]
 
     # -%% 
     #-- Call to run in parallel
