@@ -7,6 +7,7 @@ import numpy.matlib as npml
 from benchmark_models import utils
 from pathlib import Path
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 def erf_curve(t, log_max, slope, center):
@@ -93,14 +94,23 @@ def make_erf_quant_predictions(df, county_fips, key='deaths', last_date_pred='20
     data = utils.get_region_data(df, county_fips)
     first_date_obv_proc = np.min(data['date_processed'].values)
     boundary = None if boundary_date is None else int(utils.process_date(boundary_date, df) - first_date_obv_proc + 1)
-    integer_boundary_date = boundary
+    # if boundary is not None:
+    #     integer_boundary_date = int((pd.to_datetime(boundary_date) -  pd.to_datetime(start_date))/np.timedelta64(1, 'D'))
+    # else:
+    #     integer_boundary_date = 0
+
+
 
     if len(data) == 0:  # If there's no data for this FIPS, just return zeroes
-        return np.zeros((num_days, 100)), integer_boundary_date
+        return np.zeros((num_days, 100)), 0
 
     x = data['date_processed'].values[:boundary]
+    # if np.size(x) > 0:
+    #     integer_boundary_date = x[-1]
+    # else:
+    #     integer_boundary_date = 0
     if len(x) == 0:  # If there's no data for this FIPS, just return zeroes
-        return np.zeros((num_days, 100)), integer_boundary_date
+        return np.zeros((num_days, 100)), 0
     if start_date is None:
         start_date_proc = first_date_obv_proc
     else:
@@ -113,7 +123,7 @@ def make_erf_quant_predictions(df, county_fips, key='deaths', last_date_pred='20
 
     y = data[key].values[:boundary]
     if np.max(y) == 0:  # If all data we have for this FIPS is zeroes, just return zeroes
-        return np.zeros((num_days, 100)), integer_boundary_date
+        return np.zeros((num_days, 100)), last_date_obv_proc
     thresh_y = y[y >= 10]  # Isolate all days with at least 10 cases/deaths
     # If we have fewer than 5 days with substantial numbers of cases/deaths there isn't enough information to do an
     # erf fit, so just do a simple linear fit instead
@@ -150,14 +160,17 @@ def make_erf_quant_predictions(df, county_fips, key='deaths', last_date_pred='20
     t = np.arange(max(start_date_proc, first_date_obv_proc), last_date_pred_proc + 1)
     all_deciles, all_samples = sample_bootstrap_err(t, fit_func, fit_bounds, popt, errors)
 
+    # t_alex = np.arange(first_date_obv_proc)
+
     # If data didn't start for this FIPS until after our start date, pad the beginning with zeroes
     if len(all_deciles) < num_days:
         # all_deciles = np.concatenate((np.zeros((num_days - len(all_deciles), 100)), all_deciles))
         temp = np.zeros((num_days,100))
-        temp[int(t[0]):int(t[-1]),:] = all_deciles
+        shift = 0
+        temp[int(t[0]+shift):int(t[-1]+shift),:] = all_deciles
         all_deciles = temp
     integer_boundary_date = boundary
-    return all_deciles, integer_boundary_date
+    return all_deciles, last_date_obv_proc
 
 def predict_counties(df, list_of_fips, const, last_date_pred='2020-06-30', out_file='erf_model_predictions.csv', boundary_date=None,
                          key='deaths',verbose = True):
@@ -178,7 +191,7 @@ def predict_counties(df, list_of_fips, const, last_date_pred='2020-06-30', out_f
         preds = np.transpose(preds)
         preds = np.cumsum(preds,axis = 1)
         if const['isSaveMatplot']:
-            plt.plot(np.mean(preds,axis = 0))
+            plt.plot(np.percentile(preds,50,axis = 0))
             cnty_df = df[df['fips']==fips]
             actual_deaths = cnty_df['deaths'].values
             actual_dates = cnty_df['date_processed'].values
@@ -201,7 +214,6 @@ def predict_counties(df, list_of_fips, const, last_date_pred='2020-06-30', out_f
 if __name__ == '__main__':
     start = time.time()
     df = utils.get_processed_df()
-    # predict_all_counties(df, boundary_date='2020-04-16', out_file='erf_model_predictions_0416.csv',
-                        #  key='deaths')
-    predict_counties(df,boundary_date = '2020-05-10', )
+    predict_all_counties(df, boundary_date='2020-04-16', out_file='erf_model_predictions_0416.csv',
+                          key='deaths')
     print('Runtime: %.1f seconds' % (time.time() - start))

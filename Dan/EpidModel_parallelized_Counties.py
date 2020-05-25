@@ -108,16 +108,16 @@ def seiirq(dat, t, params, N, max_t, offset,processed_mobility_data, mobility_df
     # Qind = (q(t + offset, N, shift,mobility_data,offset) - tau(t + offset)*i_a)/(s + e + i_a - tau(t + offset)*i_a)
     # Qind = q(t + offset, N, shift,mobility_data,offset)/(s + e + i_a)
     # Qind_compare = q(t + offset, N, shift,mobility_df,offset)/(s + e + i_a)
-    Qind = 0 
+    # Qind = 0 
 
     # timescale = 75
     # moving = np.exp(-(t-offset)/timescale)
     # Q = N*(1-moving-shift)
 
-    # t_mov = np.minimum(t,np.shape(processed_mobility_data)[1] - 1)
-    # pmd = processed_mobility_data[1,int(np.round(t_mov))]
-    # Qind = (1 - pmd - shift)
-    # Qind = np.maximum(Qind,0)*N/(s + e + i_a)
+    t_mov = np.minimum(t,np.shape(processed_mobility_data)[1] - 1)
+    pmd = processed_mobility_data[1,int(np.round(t_mov))]
+    Qind = (1 - pmd - shift)
+    Qind = np.maximum(Qind,0)*N/(s + e + i_a)
 
         
 
@@ -176,7 +176,7 @@ def model_z(params, data,processed_mobility_data, mobility_df, tmax=-1):
     try:
         s,deb = scipy.integrate.odeint(seiirq, yz_0, np.arange(0, n), args=args,full_output = 1)
     except RuntimeError:
-        s = scipy.integrate.odeint(seiirq, yz_0, np.arange(0, n), args=args)
+        # s = scipy.integrate.odeint(seiirq, yz_0, np.arange(0, n), args=args)
 #         print('RuntimeError', params)
         return np.zeros((n, len(yz_0)))
 
@@ -218,7 +218,7 @@ def LeakyReLU(pred,true,alpha=0):
 
 # %%
 # def plot_with_errors_sample_z(res, df, mobility_df, region, d_thres, const, HYPERPARAMS, extrapolate=1, boundary=None, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True):
-def plot_with_errors_sample_z(res, df, processed_mobility_data, region, d_thres, const, HYPERPARAMS, extrapolate=1, boundary=None, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True):
+def plot_with_errors_sample_z(res, df, processed_mobility_data, mobility_data, region, d_thres, const, HYPERPARAMS, extrapolate=1, boundary=None, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True):
     data = select_region(df, region, min_deaths=d_thres)
     # mobility_data = select_region(mobility_df,region, min_deaths=d_thres, mobility = True)
     p_err_frac = HYPERPARAMS[0]
@@ -228,12 +228,12 @@ def plot_with_errors_sample_z(res, df, processed_mobility_data, region, d_thres,
     samples = 100
     for i in range(samples):
         sample = np.random.normal(loc=res.x, scale=errors)
-        s = model_z(sample, data, processed_mobility_data, len(data)*extrapolate)
+        s = model_z(sample, data, processed_mobility_data, mobility_data, len(data)*extrapolate)
         all_s.append(s)
         
     all_s = np.array(all_s)
     
-    s = model_z(res.x, data, processed_mobility_data, len(data)*extrapolate)
+    s = model_z(res.x, data, processed_mobility_data, mobility_data, len(data)*extrapolate)
     S = s[:,0]
     E = s[:,1]
     I_A = s[:,2]
@@ -435,10 +435,10 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
                                 bounds=np.transpose(np.array(const['ranges'])),
                                 jac = '2-point',
                                 verbose = const['least_squares_verbosity'],
-                                ftol = 1e-4,
-                                max_nfev= 200)
+                                ftol = 1e-8, # 1e-4
+                                max_nfev = None) # 200
             #all_s, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['train_Dfrom'], const, HYPERPARAMS, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
-            all_s, _, _ = plot_with_errors_sample_z(res, main_df, processed_mobility_data, fips, const['train_Dfrom'], const, HYPERPARAMS, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
+            all_s, _, _ = plot_with_errors_sample_z(res, main_df, processed_mobility_data, mobility_data, fips, const['train_Dfrom'], const, HYPERPARAMS, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
             toc = time.time()
             cube[0,:,ind] = fips
             # CONSIDER changing this to the first day when train_Dfrom was crossed
