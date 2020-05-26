@@ -169,6 +169,7 @@ def predict_counties(df, list_of_fips, last_date_pred='2020-06-30', out_file='er
                                                                 key=key)
         preds = all_deciles
         preds = np.transpose(preds)
+        preds = np.cumsum(preds, axis=1)
 
         # Indices are disjointed because we're recording a single FIPS on many different dates
         cube[:1,:,fips_idx] = fips
