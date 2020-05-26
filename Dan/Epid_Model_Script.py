@@ -24,14 +24,14 @@ if __name__ == '__main__':
     #-- Flag to choose whether to train the model
         # If this is true, the output file from this run will be used for
         # the remainder of the sections
-    isTrainModel = False
+    isTrainModel = True
     #-- Define control parameters
     # Flag to choose whether to save the results or not
     isSaveRes = True
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
-    sv_flnm_mat = 'Dan\\PracticeOutputs\\SomethingWrong_CO3c9888_ErfOnly_CumSumAddedIn_TrainTil10.mat'
+    sv_flnm_mat = 'Alex\\PracticeOutputs\\SomethingWrong_CO23c35c_ClstR0p2_TrainTil17.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
@@ -39,35 +39,34 @@ if __name__ == '__main__':
     # Flag to choose whether multiprocessing should be used
     isMultiProc = True
     # Number of cores to use (logical cores, not physical cores)
-    workers = 12
-
+    workers = 20
 
     #-- Filtering parameters
     # Threshold of deaths at and below which a COUNTY will not be trained on
         # Filters which COUNTIES are looped over in optimization/minimization loop
-    D_THRES = 100000
+    D_THRES = 97
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
         # OR: leave as None to train until the latest data for which there is data
-    train_til = '2020-05-10'
+    train_til = '2020-05-17'
     # Minimum deaths considered in training
         # Sets the first DAY which will be calculated as part of the optimization
         # by only including days with more than this many deaths. THIS IS DIFFERENT than 
         # D_THRES. D_THRES selects which counties are trained on and train_Dfrom selects 
         # which DAYS are used for the optimization
-    train_Dfrom = 0
+    train_Dfrom = 7
     # Minimum number of days required for a county to be trained on
         # After filtering using train_Dfrom and D_THRES, this makes sure that there
         # are at least min_train_days worth of days to train the model on (for fit_leastsqz)
-    min_train_days = 0
+    min_train_days = 5
 
 
     #-- Clustering settings
     # Enable clustering: combines the low-death counties into clusters for training
         # When False, the code will run as it used to
-    isCluster = False
+    isCluster = True
 
-    cluster_max_radius = 0
+    cluster_max_radius = 0.2
 
 
     #-- Sub-select counties to train on
@@ -121,11 +120,11 @@ if __name__ == '__main__':
 # -%% Setup Formatter run
 
     #-- Flag to choose whether to format a model's .mat output file
-    isFormat = False
+    isFormat = True
 
     #-- Define control parameters
     # Flag to distribue state deaths amongst counties
-    isAllocCounties = False
+    isAllocCounties = True
     # Allocating using the mean number of num_alloc_days days BEFORE alloc_day
     num_alloc_days=5
     alloc_day=train_til
@@ -178,12 +177,12 @@ if __name__ == '__main__':
 
     #-- Day from which we should evaluate 
         # in format 'YYYY-MM-DD'
-    eval_start_day = '2020-05-11'
+    eval_start_day = '2020-05-18'
 
     #-- Day until which we should evaluate
         # in format 'YYYY-MM-DD'
         # Set to None to evaluate until most recent day of data
-    eval_end_day = '2020-05-20'
+    eval_end_day = None
 
 
 # -%% (OPTIONAL) Define parameters for init conditional optimization
