@@ -159,7 +159,7 @@ if __name__ == '__main__':
 
     #-- When a model was not trained, provide filename to format
         # if a model was trained, that filename will automatically be used
-    format_flnm_in = r'Josh\PracticeOutputs\NNAllocation\Checkoutfde400_TrainTil10_R0p2.npy'
+    format_flnm_in = r'Josh\PracticeOutputs\NNAllocation\Checkoutfde400_TrainTil10_R0p2.mat'
 
     #-- Provide filename for output file 
     format_flnm_out = os.path.splitext(format_flnm_in)[0] + '.csv'

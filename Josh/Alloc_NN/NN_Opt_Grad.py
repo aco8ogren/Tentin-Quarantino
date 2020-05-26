@@ -21,7 +21,7 @@ def test_error(params):
     test_til  = None
     temp_processed_csv = r'Josh\Alloc_NN\NN_opt\temp_NN_opt.csv'
     numDeaths, numCases, numMobility, lenOutput, Patience, DropoutRate = params
-    format_file_for_evaluation( input_fln='Josh/PracticeOutputs/Baseline_with_clusters.npy',
+    format_file_for_evaluation( input_fln= r'Josh\PracticeOutputs\NNAllocation\Checkoutfde400_TrainTil10_R0p2.mat',
                                 output_fln=temp_processed_csv,
                                 isAllocCounties = False,
                                 isComputeDaily = True,
@@ -69,7 +69,7 @@ def Opti(fun, bounds, checkpointFln,Init='random', types=None,paramNames=None,fl
     row=currParams+[currLoss]
     DF=pd.DataFrame([currParams],columns=paramNames)
     DF['loss']=currLoss
-
+    DF.to_csv(checkpointFln)
     static=[]
     ongoing=list(range(len(bounds)))
 
@@ -128,20 +128,21 @@ def Opti(fun, bounds, checkpointFln,Init='random', types=None,paramNames=None,fl
     return 
 
         
-bounds=[[0,20],     # numDeaths
-        [0,20],     # numCases
-        [0,20],     # numMobility
-        [1,20],     # lenOutput
+bounds=[[0,10],     # numDeaths
+        [0,10],     # numCases
+        [0,10],     # numMobility
+        [1,10],     # lenOutput
         [1,20],     # patience
         [0.,.5]]    # dropout
-Init=[2,2,2,5,4,.1]
+Init=[2,2,2,5,4,.15]
 paramNames='numDeaths numCases numMobility lenOutput patience dropout'.split(' ')
 
 
-Opti(test_error,bounds,r'Josh\Alloc_NN\opt1.csv',paramNames=paramNames)
-Opti(test_error,bounds,r'Josh\Alloc_NN\opt2.csv',paramNames=paramNames)
-Opti(test_error,bounds,r'Josh\Alloc_NN\opt3.csv',paramNames=paramNames)
+# Opti(test_error,bounds,r'Josh\Alloc_NN\opt1.csv',Init=Init,paramNames=paramNames)
+# Opti(test_error,bounds,r'Josh\Alloc_NN\opt2.csv',paramNames=paramNames)
+# Opti(test_error,bounds,r'Josh\Alloc_NN\opt3.csv',paramNames=paramNames)
 Opti(test_error,bounds,r'Josh\Alloc_NN\opt4.csv',paramNames=paramNames)
+Opti(test_error,bounds,r'Josh\Alloc_NN\opt5.csv',paramNames=paramNames)
 
 
 
