@@ -24,15 +24,14 @@ if __name__ == '__main__':
     #-- Flag to choose whether to train the model
         # If this is true, the output file from this run will be used for
         # the remainder of the sections
-    isTrainModel = True
-
+    isTrainModel = False
     #-- Define control parameters
     # Flag to choose whether to save the results or not
     isSaveRes = True
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
-    sv_flnm_mat = 'Alex\\PracticeOutputs\\detective_work.mat'
+    sv_flnm_mat = r'Josh\Alloc_NN\Run1.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
@@ -40,7 +39,7 @@ if __name__ == '__main__':
     # Flag to choose whether multiprocessing should be used
     isMultiProc = True
     # Number of cores to use (logical cores, not physical cores)
-    workers = 20
+    workers = 8
 
 
     #-- Filtering parameters
@@ -50,7 +49,7 @@ if __name__ == '__main__':
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
         # OR: leave as None to train until the latest data for which there is data
-    train_til = '2020 05 10'
+    train_til = '2020-05-10'
     # Minimum deaths considered in training
         # Sets the first DAY which will be calculated as part of the optimization
         # by only including days with more than this many deaths. THIS IS DIFFERENT than 
@@ -68,7 +67,7 @@ if __name__ == '__main__':
         # When False, the code will run as it used to
     isCluster = True
 
-    cluster_max_radius = 2
+    cluster_max_radius = 1e6
 
 
     #-- Sub-select counties to train on
@@ -114,18 +113,19 @@ if __name__ == '__main__':
     verbosity = 3
 
     #-- Set hyperparameters
-    p_err_frac = 0.0995764604328379   # The size of the uncertainty that we have on our optimal SEIIRQD parameters. This affects the size of our quantile differences.
+    # p_err_frac = 0.0995764604328379   # The size of the uncertainty that we have on our optimal SEIIRQD parameters. This affects the size of our quantile differences.
+    p_err_frac = 0.097   # The size of the uncertainty that we have on our optimal SEIIRQD parameters. This affects the size of our quantile differences.
     death_weight = 5   # The weight with which we multiply the death error in SEIIRQD optimization. The death data is trusted death_weight times more than the symptomatic infected data.
     alpha = 0.00341564933361549         # alpha of the LeakyReLU for modifying the symptomatic infected error. i.e. if alpha = 0 ==> no penalty for overestimating Sympt Inf. alpha = 1 ==> as much penalty for overestimating as underestimating.
 
 # -%% Setup Formatter run
 
     #-- Flag to choose whether to format a model's .mat output file
-    isFormat = False
+    isFormat = True
 
     #-- Define control parameters
     # Flag to distribue state deaths amongst counties
-    isAllocCounties = True
+    isAllocCounties = False
     # Allocating using the mean number of num_alloc_days days BEFORE alloc_day
     num_alloc_days=5
     alloc_day=train_til
@@ -134,9 +134,32 @@ if __name__ == '__main__':
 
 
 
+    #-- Options for allocation using Neural Net
+    # Flag to distribute deaths with neural net
+    isAllocNN=True
+    # Number of days of death inputs
+    numDeaths=2
+    # Number of days of cases inputs
+    numCases=2
+    # Number of days of mobility inputs
+    numMobility=2
+    # Number of days of deaths outputs to average over
+    lenOutput=5
+    # Flag to remove data points with zero deaths for inputs and output
+    remove_sparse=True
+    # Number of epochs with no decrease in validation loss before training stops
+    Patience=4
+    # Dropout rate for dropout layers between the two hidden dense layers
+    DropoutRate=0.15
+    # Flag to retrain neural net or just look for model in directory
+    retrain=True
+    # Directory to save or load model from
+    modelDir=r'Josh\Alloc_NN\DansStuff'
+
+
     #-- When a model was not trained, provide filename to format
         # if a model was trained, that filename will automatically be used
-    format_flnm_in = 'Alex/PracticeOutputs/fresh_r_equals_zero.npy'
+    format_flnm_in = r'Josh\PracticeOutputs\NNAllocation\Checkoutfde400_TrainTil10_R0p2.npy'
 
     #-- Provide filename for output file 
     format_flnm_out = os.path.splitext(format_flnm_in)[0] + '.csv'
@@ -146,7 +169,8 @@ if __name__ == '__main__':
 # -%% Setup evaluator run
 
     #-- Flag to choose whether to evaluate a .csv file
-    isEval = False
+    isEval = True
+
 
     #-- When model was not formatted, provide a filename to evaluate
         # if a model was formatted, that filename will automatically be used
@@ -239,13 +263,22 @@ if __name__ == '__main__':
             if not isRunInitConHyper:
                 print('*** Input filename:\n    %s'%format_flnm_in)
 
-            format_file_for_evaluation(format_flnm_in,
+            format_file_for_evaluation( format_flnm_in,
                                         format_flnm_out,
                                         isAllocCounties = isAllocCounties,
                                         isComputeDaily = isComputeDaily,
                                         alloc_day=alloc_day,
-                                        num_alloc_days=num_alloc_days)
-
+                                        num_alloc_days=num_alloc_days,
+                                        isAllocNN=isAllocNN,
+                                        retrain=retrain,
+                                        numDeaths=numDeaths,
+                                        numCases=numCases,
+                                        numMobility=numMobility,
+                                        lenOutput=lenOutput,
+                                        remove_sparse=remove_sparse,
+                                        Patience=Patience,
+                                        DropoutRate=DropoutRate,
+                                        modelDir=modelDir)
 
             if not isRunInitConHyper:
                 print('*** Formatted file:\n    %s'%format_flnm_out)

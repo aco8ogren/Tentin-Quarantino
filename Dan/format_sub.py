@@ -42,7 +42,22 @@ def read_file(filename):
     return data
 
 # %% Define formatting function
-def format_file_for_evaluation(input_fln,output_fln,isAllocCounties = True,isComputeDaily = True, alloc_day=None, num_alloc_days=5):
+def format_file_for_evaluation( input_fln,
+                                output_fln,
+                                isAllocCounties = False,
+                                isComputeDaily = True,
+                                alloc_day=None,
+                                num_alloc_days=5,
+                                isAllocNN=True,
+                                retrain=True,
+                                numDeaths=5,
+                                numCases=5,
+                                numMobility=5,
+                                lenOutput=5,
+                                remove_sparse=True,
+                                Patience=4,
+                                DropoutRate=.1,
+                                modelDir=None):
     # if alloc_day is not None:
     #     alloc_day=
 # %-% Setup paths
@@ -95,6 +110,20 @@ def format_file_for_evaluation(input_fln,output_fln,isAllocCounties = True,isCom
 
     if isAllocCounties:
         data = cf.alloc_fromCluster(data, cluster_ref_fln,alloc_day=alloc_day, num_alloc_days=num_alloc_days)
+
+    if isAllocNN:
+        data = cf.alloc_NN( data,
+                            retrain=retrain,
+                            alloc_day=alloc_day,
+                            cluster_ref_fln=cluster_ref_fln,
+                            numDeaths=numDeaths,
+                            numCases=numCases,
+                            numMobility=numMobility,
+                            lenOutput=lenOutput,
+                            remove_sparse=remove_sparse,
+                            Patience=Patience,
+                            DropoutRate=DropoutRate,
+                            modelDir=modelDir)
 
     # %%
     # CALCULATE QUANTILES and extract data chunks (split into fips and percentiles)

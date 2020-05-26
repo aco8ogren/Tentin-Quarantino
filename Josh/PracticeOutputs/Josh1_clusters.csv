@@ -1,7 +1,0 @@
-,fips,cluster,long,lat,deaths,clusterDeaths,state,county
-3,48029.0,1,-98.525238,29.479255,43,231,ClusterState,cluster0
-2,6059.0,1,-117.86288,33.733953,36,231,ClusterState,cluster0
-1,6085.0,1,-121.910421,37.315104999999996,96,231,ClusterState,cluster0
-0,6075.0,1,-122.438323,37.759598,21,231,ClusterState,cluster0
-4,31055.0,1,-96.061471,41.25991,14,231,ClusterState,cluster0
-5,55025.0,1,-89.393883,43.074343,21,231,ClusterState,cluster0
