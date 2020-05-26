@@ -123,7 +123,7 @@ def is_number(s):
 def tau(t):
     return 0
 
-def seiirq(dat, t, params, N, max_t, offset,mobility_data):
+def seiirq(dat, t, params, N, max_t, offset,processed_mobility_data):
     if t >= max_t:
         return [0]*8
     beta = params[0]
@@ -141,9 +141,18 @@ def seiirq(dat, t, params, N, max_t, offset,mobility_data):
     i_s = dat[3]
 
     # TODO: What's the point of tau if it just returns 0? Is this something we should update?
-    Qind = (q(t + offset, N, shift,mobility_data,offset) - tau(t + offset)*i_a)/(s + e + i_a - tau(t + offset)*i_a)
-    Qia = Qind + (1-Qind)*tau(t + offset)
-    
+    # Qind = (q(t + offset, N, shift,mobility_data,offset) - tau(t + offset)*i_a)/(s + e + i_a - tau(t + offset)*i_a)
+    # Qia = Qind + (1-Qind)*tau(t + offset)
+
+    t_mov = np.minimum(t, np.shape(processed_mobility_data)[1]-1)
+    pmd = processed_mobility_data[1,int(np.round(t_mov))]
+    Qind = 1 - pmd - shift
+    # NOTE/TODO: This gaurantees that we never simulate more people out and about than usual
+        # If desired, consider the accuracy of this assumption
+    Qind = np.maximum(Qind, 0) * N/(s + e + i_a)
+
+    Qia = Qind
+
     dsdt = - beta * s * i_a * (1 - Qind) * (1 - Qia) / N
     dedt = beta * s * i_a* (1 - Qind) * (1 - Qia) / N  - alpha * e
     diadt = alpha * e - (sigma + ra) * i_a
@@ -167,7 +176,7 @@ def mse(A, B):
     Bp[B == np.inf] = 0
     return mean_squared_error(Ap, Bp)
 
-def model_z(params, data,mobility_data, tmax=-1):
+def model_z(params, data,processed_mobility_data, tmax=-1):
     # initial conditions
     N = data['Population'].values[0] # total population
     initial_conditions = N * np.array(params[-4:]) # the parameters are a fraction of the population so multiply by the population
@@ -188,7 +197,7 @@ def model_z(params, data,mobility_data, tmax=-1):
         n = int(np.round(tmax))
     
     # Package parameters into a tuple
-    args = (params, N, n, offset,mobility_data)
+    args = (params, N, n, offset,processed_mobility_data)
     
     # Integrate ODEs
     try:
@@ -199,10 +208,10 @@ def model_z(params, data,mobility_data, tmax=-1):
 
     return s
 
-def fit_leastsq_z(params, data, mobility_data,HYPERPARAMS):
+def fit_leastsq_z(params, data, processed_mobility_data,HYPERPARAMS):
     Ddata = (data['deaths'].values)
     Idata = (data['cases'].values)
-    s = model_z(params, data, mobility_data)
+    s = model_z(params, data, processed_mobility_data)
 
     # S = s[:,0]
     # E = s[:,1]
@@ -234,9 +243,9 @@ def LeakyReLU(pred,true,alpha=0):
     return np.array(result)
 
 # %%
-def plot_with_errors_sample_z(res, df, mobility_df, region, d_thres, const, HYPERPARAMS, extrapolate=1, boundary=None, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True):
+def plot_with_errors_sample_z(res, df, processed_mobility_data, region, d_thres, const, HYPERPARAMS, extrapolate=1, boundary=None, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True):
     data = select_region(df, region, min_deaths=d_thres)
-    mobility_data = select_region(mobility_df,region, min_deaths=d_thres, mobility = True)
+    # mobility_data = select_region(mobility_df,region, min_deaths=d_thres, mobility = True)
     p_err_frac = HYPERPARAMS[0]
     errors = res.x*p_err_frac # ALEX --> the parameter error is simply 5% of the parameter. i.e. we know the parameter to within +or- 5%.
     
@@ -244,12 +253,12 @@ def plot_with_errors_sample_z(res, df, mobility_df, region, d_thres, const, HYPE
     samples = 100
     for i in range(samples):
         sample = np.random.normal(loc=res.x, scale=errors)
-        s = model_z(sample, data, mobility_data, len(data)*extrapolate)
+        s = model_z(sample, data, processed_mobility_data, len(data)*extrapolate)
         all_s.append(s)
         
     all_s = np.array(all_s)
     
-    s = model_z(res.x, data,mobility_data, len(data)*extrapolate)
+    s = model_z(res.x, data,processed_mobility_data, len(data)*extrapolate)
     S = s[:,0]
     E = s[:,1]
     I_A = s[:,2]
@@ -384,15 +393,26 @@ def par_fun(fips_in_core, main_df, mobility_df, coreInd, const, HYPERPARAMS, Err
                 guesses = const['guesses'] + initial_conditions.tolist()
 
             #-- Train the model
+            offset = data['date_processed'].min()
+            time_list = [col for col in list(mobility_data.columns) if is_number(col) and col>=offset]
+            moving_list = [mobility_data[col].values for col in list(mobility_data.columns) if is_number(col) and col>= offset]
+            moving = np.squeeze(np.array(moving_list))/100
+            if np.shape(moving_list)[1] == 0:
+                timelength = np.max(time_list)-np.min(time_list)
+                timescale = timelength/3
+                t = np.arange(0, timelength)
+                moving = np.exp(-t/timescale)
+            processed_mobility_data = np.array([time_list, moving])
+
             tic = time.time()
             res = least_squares(fit_leastsq_z, 
                                 guesses, 
-                                args=(data,mobility_data, HYPERPARAMS), 
+                                args=(data,processed_mobility_data, HYPERPARAMS), 
                                 bounds=np.transpose(np.array(const['ranges'])),
                                 jac = '2-point',
                                 verbose = 0)
             # plot_with_errors_sample_z(res, const['params'], initial_conditions, main_df, mobility_df, state, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=True);
-            all_s, _, _, _ = plot_with_errors_sample_z(res, main_df, mobility_df, fips, const['train_Dfrom'], const, HYPERPARAMS, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
+            all_s, _, _, _ = plot_with_errors_sample_z(res, main_df, processed_mobility_data, fips, const['train_Dfrom'], const, HYPERPARAMS, extrapolate=extrap, boundary=boundary, plot_asymptomatic_infectious=False,plot_symptomatic_infectious=False)
             toc = time.time()
             cube[0,:,ind] = fips
             # CONSIDER changing this to the first day when train_Dfrom was crossed

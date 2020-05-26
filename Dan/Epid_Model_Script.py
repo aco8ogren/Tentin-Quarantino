@@ -31,7 +31,7 @@ if __name__ == '__main__':
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
-    sv_flnm_mat = 'Alex\\PracticeOutputs\\SomethingWrong_CO23c35c_ClstR0p2_TrainTil17.mat'
+    sv_flnm_mat = 'Dan\\PracticeOutputs\\SomethingWrong_ErfFixed_MobilityFixed_ClstRadOff_TrainTil514.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     # Flag to choose whether multiprocessing should be used
     isMultiProc = True
     # Number of cores to use (logical cores, not physical cores)
-    workers = 20
+    workers = 12
 
     #-- Filtering parameters
     # Threshold of deaths at and below which a COUNTY will not be trained on
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
         # OR: leave as None to train until the latest data for which there is data
-    train_til = '2020-05-17'
+    train_til = '2020-05-14'
     # Minimum deaths considered in training
         # Sets the first DAY which will be calculated as part of the optimization
         # by only including days with more than this many deaths. THIS IS DIFFERENT than 
@@ -64,9 +64,9 @@ if __name__ == '__main__':
     #-- Clustering settings
     # Enable clustering: combines the low-death counties into clusters for training
         # When False, the code will run as it used to
-    isCluster = True
+    isCluster = False
 
-    cluster_max_radius = 0.2
+    cluster_max_radius = 0
 
 
     #-- Sub-select counties to train on
@@ -158,7 +158,7 @@ if __name__ == '__main__':
 
     #-- When a model was not trained, provide filename to format
         # if a model was trained, that filename will automatically be used
-    format_flnm_in = r'Josh\PracticeOutputs\NNAllocation\Checkoutfde400_TrainTil10_R0p2.mat'
+    format_flnm_in = r'Dan\PracticeOutputs\SomethingWrong_SyntaxCheck.mat'
 
     #-- Provide filename for output file 
     format_flnm_out = os.path.splitext(format_flnm_in)[0] + '.csv'
@@ -173,11 +173,11 @@ if __name__ == '__main__':
 
     #-- When model was not formatted, provide a filename to evaluate
         # if a model was formatted, that filename will automatically be used
-    eval_flnm_in = 'Dan\\PracticeOutputs\\JoshBranch_erf_model_predictions_0510.csv'
+    eval_flnm_in = 'Dan\\PracticeOutputs\\.csv'
 
     #-- Day from which we should evaluate 
         # in format 'YYYY-MM-DD'
-    eval_start_day = '2020-05-18'
+    eval_start_day = '2020-05-15'
 
     #-- Day until which we should evaluate
         # in format 'YYYY-MM-DD'
