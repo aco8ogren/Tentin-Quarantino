@@ -1,5 +1,10 @@
 # Tentin Quarantino: Caltech COVID-19 Prediction
 
+## NOTE: The final submission to the competition was created with the FinalSubmission branch. The code demo also exists on this branch.
+The master branch has many features not included in the final submission. These features were created and implemented, yet the model as 
+a whole has not yet been perfected and as such was producing unreliable results. Several features thought to be causing bugs where then removed 
+to create the FinalSubmission branch.
+
 ## Overview
 This repository contains all of the code generated during our efforts to
 understand and model the COVID-19 outbreak. Organized by the
@@ -7,22 +12,19 @@ understand and model the COVID-19 outbreak. Organized by the
 Yaser Abu-Mostafa's [CS 156b](http://cs156.caltech.edu/) class, the competition seeks to
 address the pandemic and help estimate the needs for medical resources, reducing uncertainty
 in the crisis response. Specifically, teams predict COVID-19 deaths at the county level in
-the U.S. on a two-week timescale. The competition is open to the entire Caltech campus — register [here](https://docs.google.com/forms/d/e/1FAIpQLSeq5ncLFDATIefqU--68OlSQ4pCae-Gww1ZQuf2T-mIZ2f9ng/viewform?usp=sf_link)! The code in the repository was created by 
-Daniel Echeverri, Josh Lassman, and Alex Ogren.
+the U.S. on a two-week timescale. The competition is open to the entire Caltech campus — register [here](https://docs.google.com/forms/d/e/1FAIpQLSeq5ncLFDATIefqU--68OlSQ4pCae-Gww1ZQuf2T-mIZ2f9ng/viewform?usp=sf_link)!
 
-**NOTE: The final submission to the competition was created with the FinalSubmission branch. The code demo also exists on this branch.**
-The master branch has many features not included in the final submission. These features were created and implemented, yet the model as 
-a whole has not yet been perfected and as such was producing unreliable results. Several features thought to be causing bugs where then removed 
-to create the FinalSubmission branch.
+ The code in the repository was created by 
+Daniel Echeverri, Joshua Lassman, and Alexander Ogren.
 
 ## Repository guide
 The files that run the full model are `Tentin_Quarantino_43_code_demo.ipynb` and `Dan\Epid_Model_Script.py`. These files run functions from various files throught the repository:
 * `Dan\EpidModel_parallelized_Counties.py`
-    * `SEIIRQD_model()`: This is the main function that trains the model and saves the result to .npy and .mat files
+    * `SEIIRQD_model()`: This is the main function that trains the SEIIRQD and erf models and saves the result to .npy and .mat files
 * `Dan\format_sub.py`
-    * `format_file_for_evaluation()`: This function takes the results saved to the .npy or .mat files and converst them the final .csv format for submission. 
+    * `format_file_for_evaluation()`: This function takes the results saved to the .npy or .mat files and converts them to the final .csv format for submission. 
 * `Alex\copy_of_evaluator.py`
-    * `evaluate_predictions()`: This function takes the .csv file and calculates the loss
+    * `evaluate_predictions()`: This function is based off the TA evaluator function. It takes the .csv file and calculates the loss in similar fashion. 
 
 Many other routines and functions are called through the script, such as
 * `Dan\cube_formatter.py`
