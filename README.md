@@ -18,7 +18,7 @@ the U.S. on a two-week timescale. The competition is open to the entire Caltech 
 Daniel Echeverri, Joshua Lassman, and Alexander Ogren.
 
 ## Repository guide
-The files that run the full model are `Tentin_Quarantino_43_code_demo.ipynb` and `Dan\Epid_Model_Script.py`. These files run functions from various files throught the repository:
+The Requirements.txt file in the main directory contains requirements for a python environment that should be capable of running all files. The files that run the full model are `Tentin_Quarantino_43_code_demo.ipynb` and `Dan\Epid_Model_Script.py`. These files run functions from various files throught the repository:
 * `Dan\EpidModel_parallelized_Counties.py`
     * `SEIIRQD_model()`: This is the main function that trains the SEIIRQD and erf models and saves the result to .npy and .mat files
 * `Dan\format_sub.py`
