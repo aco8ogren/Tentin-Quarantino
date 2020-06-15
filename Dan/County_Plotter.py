@@ -34,7 +34,7 @@ hv.extension('bokeh')
 # Top N counties to plot with the most deaths
     # Set to -1 to plot all
 plotN = 20
-shift = 20
+shift = 0
 # Data Manipulation flags (should match those used in creating submission file)
 isAllocCounties = True          # Flag to distribue state deaths amongst counties
 isComputeDaily = False           # Flag to translate cummulative data to daily counts

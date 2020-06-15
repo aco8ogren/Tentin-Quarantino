@@ -32,7 +32,7 @@ if __name__ == '__main__':
     # Filename for saved .npy and .mat files (can include path)
         # Make sure the directory structure is present before calling
         # NOTE: when clustering, the .mat filename will be used for saving the cluster file
-    sv_flnm_mat = 'Alex\\PracticeOutputs\\detective_work.mat'
+    sv_flnm_mat = 'Alex\\PracticeOutputs\\SomethingRight_CheckIn0602.mat'
     sv_flnm_np  = os.path.splitext(sv_flnm_mat)[0] + '.npy'
 
 
@@ -50,7 +50,7 @@ if __name__ == '__main__':
     # Last day used for training (good for testing)
         # must be a valid pandas.to_datetime() string
         # OR: leave as None to train until the latest data for which there is data
-    train_til = '2020 05 10'
+    train_til = '2020 05 25'
     # Minimum deaths considered in training
         # Sets the first DAY which will be calculated as part of the optimization
         # by only including days with more than this many deaths. THIS IS DIFFERENT than 
@@ -68,7 +68,7 @@ if __name__ == '__main__':
         # When False, the code will run as it used to
     isCluster = True
 
-    cluster_max_radius = 2
+    cluster_max_radius = 0
 
 
     #-- Sub-select counties to train on
@@ -114,14 +114,14 @@ if __name__ == '__main__':
     verbosity = 3
 
     #-- Set hyperparameters
-    p_err_frac = 0.0995764604328379   # The size of the uncertainty that we have on our optimal SEIIRQD parameters. This affects the size of our quantile differences.
+    p_err_frac = 0.097   # The size of the uncertainty that we have on our optimal SEIIRQD parameters. This affects the size of our quantile differences.
     death_weight = 5   # The weight with which we multiply the death error in SEIIRQD optimization. The death data is trusted death_weight times more than the symptomatic infected data.
     alpha = 0.00341564933361549         # alpha of the LeakyReLU for modifying the symptomatic infected error. i.e. if alpha = 0 ==> no penalty for overestimating Sympt Inf. alpha = 1 ==> as much penalty for overestimating as underestimating.
 
 # -%% Setup Formatter run
 
     #-- Flag to choose whether to format a model's .mat output file
-    isFormat = False
+    isFormat = True
 
     #-- Define control parameters
     # Flag to distribue state deaths amongst counties
@@ -146,7 +146,7 @@ if __name__ == '__main__':
 # -%% Setup evaluator run
 
     #-- Flag to choose whether to evaluate a .csv file
-    isEval = False
+    isEval = True
 
     #-- When model was not formatted, provide a filename to evaluate
         # if a model was formatted, that filename will automatically be used
@@ -154,7 +154,7 @@ if __name__ == '__main__':
 
     #-- Day from which we should evaluate 
         # in format 'YYYY-MM-DD'
-    eval_start_day = '2020-05-11'
+    eval_start_day = '2020-05-26'
 
     #-- Day until which we should evaluate
         # in format 'YYYY-MM-DD'
