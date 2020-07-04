@@ -12,10 +12,6 @@ title([st.county{1} ', ' st.state{1} ' (' num2str(fips) ')']);
 legend('NYT data','location','northwest')
 
 deaths_per_day = [0; diff(st.deaths)];
-% smoothing_time_scale = 5;
-% w = gausswin(smoothing_time_scale); 
-% denom = sum(w);
-% smooth_deaths_per_day = filter(w,denom,deaths_per_day);
 smoothing_time_scale = 3;
 smooth_deaths_per_day = imgaussfilt(deaths_per_day,smoothing_time_scale);
 
@@ -27,6 +23,20 @@ p2 = plot(st.date,smooth_deaths_per_day,'r-');
 set_axis_properties(st);
 xlabel('date');
 ylabel('# deaths per day');
+title([st.county{1} ', ' st.state{1} ' (' num2str(fips) ')']);
+legend('raw NYT data','smoothed NYT data','location','northwest')
+
+infected_per_day = [0; diff(st.cases)];
+smoothing_time_scale = 3;
+smooth_infected_per_day = imgaussfilt(infected_per_day,smoothing_time_scale);
+
+f2 = figure2();
+p2 = plot(st.date,infected_per_day,'b.');
+hold on
+p2 = plot(st.date,smooth_infected_per_day,'b-');
+set_axis_properties(st);
+xlabel('date');
+ylabel('# infected per day');
 title([st.county{1} ', ' st.state{1} ' (' num2str(fips) ')']);
 legend('raw NYT data','smoothed NYT data','location','northwest')
 end
